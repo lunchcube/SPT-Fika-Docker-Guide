@@ -1,0 +1,101 @@
+# syntax=docker/dockerfile:1
+#
+# SPT-FIKA-Docker — multi-major, build-from-source SPT server image.
+#
+# Phase 1: the 4.0 (C#/.NET) path is implemented and the focus. The 3.11 (Node) path
+# is present but UNVERIFIED (see DESIGN.md §13). Select the major with --build-arg.
+#
+#   docker build image/ -t spt-fika-server:4.0.13 \
+#       --build-arg SPT_MAJOR=4 --build-arg SPT_VERSION=4.0.13
+#
+# Native multi-arch (amd64 + arm64) comes from compiling the server from source per
+# target arch, so one image: reference resolves correctly on either. See DESIGN.md §7/§8.
+
+ARG SPT_MAJOR=4
+# Must be a valid tag/branch of the matching sp-tarkov repo
+# (server-csharp for 4.x, server for 3.11.x).
+ARG SPT_VERSION=4.0.13
+
+# ============================================================================
+# build-v4 — compile SPT 4.0 (C# / .NET) from source for the target architecture.
+# Adapted from Outshynd's spt-server image (DESIGN.md §4).
+# ============================================================================
+FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS build-v4
+ARG TARGETOS
+ARG TARGETARCH
+ARG SPT_VERSION
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl ca-certificates git git-lfs \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /tmp
+RUN git clone --depth 1 --branch "$SPT_VERSION" \
+        https://github.com/sp-tarkov/server-csharp.git server
+WORKDIR /tmp/server
+RUN git lfs pull
+
+# Drop the self-contained apphost AssemblyName overrides so publish emits a plain
+# framework-dependent SPT.Server.dll we launch with `dotnet` (arch-clean, smaller).
+RUN sed -i '/<AssemblyName>SPT.Server.Linux<\/AssemblyName>/d' ./SPTarkov.Server/SPTarkov.Server.csproj \
+ && sed -i '/<AssemblyName>SPT.Server.Mac<\/AssemblyName>/d'   ./SPTarkov.Server/SPTarkov.Server.csproj
+
+RUN dotnet publish ./SPTarkov.Server/SPTarkov.Server.csproj \
+        -c Release -f net9.0 -r "${TARGETOS}-${TARGETARCH}" \
+        --self-contained false \
+        -p:SptBuildType=RELEASE \
+        -p:SptVersion="$SPT_VERSION" \
+        -p:SptBuildTime="$(date +%Y%m%d)" \
+        -p:SptCommit="$(git rev-parse --short HEAD)" \
+        -p:IsPublish=true \
+        -p:UseAppHost=false \
+        -o /app/publish \
+ && rm -f /app/publish/*.pdb \
+ && echo "$SPT_VERSION" > /app/publish/.version
+
+# ============================================================================
+# build-v3 — compile SPT 3.11 (TypeScript / Node) from source. WIP / UNVERIFIED
+# (DESIGN.md §13). buildkit prunes this stage entirely unless SPT_MAJOR=3.
+# ============================================================================
+FROM debian:bookworm AS build-v3
+ARG SPT_VERSION
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl ca-certificates git git-lfs xz-utils \
+ && rm -rf /var/lib/apt/lists/*
+# Node 20 is the toolchain SPT 3.11 builds with.
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+ && apt-get install -y nodejs && rm -rf /var/lib/apt/lists/*
+RUN git clone --depth 1 --branch "$SPT_VERSION" \
+        https://github.com/sp-tarkov/server.git /tmp/spt
+WORKDIR /tmp/spt/project
+RUN git lfs pull \
+ && npm ci \
+ && npm run build:release \
+ && mv build /app/publish        # emits SPT.Server.exe (pkg-bundled Node binary)
+
+# ============================================================================
+# final — shared runtime. 4.0 needs the .NET runtime (aspnet); 3.11's pkg exe is
+# self-contained but runs here fine too (DESIGN.md §7 leaves splitting the base as
+# a later optimisation). The COPY --from picks the stage for the selected major.
+# ============================================================================
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-noble AS final
+ARG SPT_MAJOR
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl gosu jq \
+ && rm -rf /var/lib/apt/lists/*
+
+# buildkit only builds the stage referenced here, so a 4.0 build never runs the
+# Node stage (and vice-versa).
+COPY --from=build-v${SPT_MAJOR} --chmod=755 /app/publish /opt/SPT
+
+COPY --chmod=755 init-server.sh /usr/bin/init-server
+
+ENV SPT_MAJOR=${SPT_MAJOR}
+EXPOSE 6969
+
+# SPT serves HTTPS with a self-signed cert, hence -k.
+HEALTHCHECK --interval=180s --timeout=10s --retries=3 --start-period=60s \
+  CMD curl -fk --header "responsecompressed:0" https://localhost:6969/launcher/ping || exit 1
+
+ENTRYPOINT ["/usr/bin/init-server"]
