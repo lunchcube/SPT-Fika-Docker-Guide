@@ -78,6 +78,11 @@ RUN git lfs pull \
 # self-contained but runs here fine too (DESIGN.md §7 leaves splitting the base as
 # a later optimisation). The COPY --from picks the stage for the selected major.
 # ============================================================================
+# Alias the selected build stage. FROM expands ARGs (--from does NOT), so this is the
+# documented workaround for picking a build stage by build-arg. buildkit still prunes
+# the unselected stage — a 4.0 build never runs the Node stage, and vice-versa.
+FROM build-v${SPT_MAJOR} AS build-selected
+
 FROM mcr.microsoft.com/dotnet/aspnet:9.0-noble AS final
 ARG SPT_MAJOR
 
@@ -85,9 +90,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         curl gosu jq \
  && rm -rf /var/lib/apt/lists/*
 
-# buildkit only builds the stage referenced here, so a 4.0 build never runs the
-# Node stage (and vice-versa).
-COPY --from=build-v${SPT_MAJOR} --chmod=755 /app/publish /opt/SPT
+COPY --from=build-selected --chmod=755 /app/publish /opt/SPT
 
 COPY --chmod=755 init-server.sh /usr/bin/init-server
 
