@@ -1,6 +1,6 @@
 # SPT-FIKA-Docker — Design Document
 
-> Branch: `next` · Repo target name: `SPT-FIKA-Docker` (rename on merge to `main`)
+> Repo: `Dildz/SPT-Fika-Docker-Guide` (monorepo) · Rework branch: `UI-Configurator` (merges to `main` when ready; `main` stays the current stable guide). No repo rename.
 > Status: Design — no implementation yet. Drafted 2026-05-27, revised 2026-05-27 evening to a web-configurator-first UX after reviewing [setuphytale.com](https://setuphytale.com). Revised 2026-06-27 to **build the SPT 4.0 server from source** and **base headless on Outshynd's wine-tkg image** (see §4, §7, §11).
 
 ---
@@ -155,92 +155,54 @@ Each can be offered as an installer prompt (opt-in or opt-out).
 
 ---
 
-## 6. Repo structure — three repos, separated concerns
+## 6. Repo structure — one monorepo, clean internal separation
 
-The web configurator and the Docker image are independent projects with separate lifecycles. They get separate repos. The host-side helper script ships *inside* the configurator's generated bundle, not in either repo's source. So:
+**Single repo: `Dildz/SPT-Fika-Docker-Guide`** (the established 47⭐ guide, transferred from OnniSaarni). The image and the web configurator are different things with different toolchains, so they live in **separate top-level folders** rather than separate repos — one place to clone and track, without the two tangling. The generated bundle is never source-controlled.
 
-### 6a. `dildz/spt-fika-server` — the Docker image (public)
-
-> Renamed from `SPT-FIKA-OracleARM--Docker-Guide` on merge to `main`.
+> Rework lives on branch **`UI-Configurator`**; **`main` stays the current stable guide** until the rework is ready to merge. No repo rename (the earlier `spt-fika-server` rename is dropped — the repo keeps its name and stars).
 
 ```
-spt-fika-server/
-├── README.md                        Image catalog + env-var contract; links to configurator
+SPT-Fika-Docker-Guide/               (branch: UI-Configurator)
+├── README.md                        Landing / guide; links to both surfaces
 ├── LICENSE
-├── DESIGN.md                        This file (lives here on merge)
-├── Dockerfile                       Multi-major (SPT_MAJOR build-arg). See §7.
-├── init-server.sh                   Version-branched entrypoint. See §7.
-├── scripts/
-│   ├── install_fika.sh
-│   ├── auto_update.sh
-│   ├── profile_backup.sh
-│   ├── install_other_mods.sh
-│   └── enforce_spt4_structure.sh    (only runs when SPT_MAJOR=4)
-├── cron/
-│   └── profile_backup.cron
-├── headless/                        x86-only service / pinned zhliau image
-│   ├── README.md                    "We pin zhliau's image, host-side sidecar for logs"
-│   └── compose.fragment.yml         Reference snippet the configurator embeds
-├── cosmetics/                       Carried forward from current repo
-│   ├── HD-trader-images/
-│   ├── SPT-launcher-images/
-│   └── randomize-bg.sh
-├── mod-pack/
-│   └── ModSync.Updater.exe          Opt-in client-side installer (bundled separately)
+├── DESIGN.md                        This file
+├── image/                           ── the multi-arch Docker image (§7) ──
+│   ├── Dockerfile                   Multi-major, build-from-source (SPT_MAJOR)
+│   ├── init-server.sh               Version-branched runtime entrypoint
+│   ├── scripts/
+│   │   ├── install_fika.sh · auto_update.sh · profile_backup.sh · install_other_mods.sh
+│   │   ├── enforce_spt4_structure.sh        (only when SPT_MAJOR=4)
+│   │   └── restart-fika.sh                  (carried from old repo; to generalize)
+│   ├── cron/profile_backup.cron
+│   ├── cosmetics/                   HD-trader-images/ · SPT-launcher-images/ · randomize-bg.sh   ✓ carried
+│   ├── mod-pack/ModSync.Updater.exe         Opt-in client-side installer                        ✓ carried
+│   └── headless/                    wine-tkg + ntsync image, Outshynd base (§11)
+│       └── Dockerfile · entrypoint.sh · run-game.sh · monitor-logs.sh
+├── configurator/                    ── the Next.js web app (Phase 3) ──
+│   ├── package.json · tsconfig.json · eslint.config.mjs · next.config.ts   (from Portfolio-Page)
+│   ├── app/                         layout · page (form+preview) · components/
+│   ├── lib/                         compose-emitter · env-emitter · bundle · schema (mirrors docs/env-vars.md)
+│   ├── public/
+│   └── deploy/                      Dockerfile (static export) · docker-compose.yml · caddy-snippet.txt
 └── docs/
-    ├── architecture.md              How version-branching works
-    ├── env-vars.md                  AUTHORITATIVE contract — configurator reads this
-    ├── operations.md                Day-2: logs, backups, restarts, recovery
-    ├── troubleshooting.md           Matching-error recipe, common pitfalls
-    └── version-compatibility.md     What changes between 3.11 and 4.0
+    ├── env-vars.md                  AUTHORITATIVE contract — configurator's schema mirrors this
+    ├── architecture.md · operations.md · troubleshooting.md · version-compatibility.md
+    └── operations-notes.txt         raw notes carried from old repo → fold into operations.md   ✓ carried
 ```
 
-The previous plan included `install.sh`, `update.sh`, `.env.example`, and `docker-compose.yml` at the repo root. They're gone — the configurator emits them at download time, and they aren't checked-in artifacts anymore. `systemd/` units move into the configurator's bundle template (§9b).
+**Why monorepo (was three repos):** for a solo maintainer, one place to clone and track beats juggling repos; and the image and configurator share one env-var contract (`docs/env-vars.md` ↔ `configurator/lib/schema.ts`), so co-locating keeps that contract honest. Cost: the public repo also holds a Next.js app — mitigated by the hard `image/` vs `configurator/` split and per-folder CI. The earlier "configurator must be private" idea is moot: nothing in it is secret — it's a dumb client-side YAML emitter.
 
-### 6b. `dildz/setup-spt-fika-docker` — the web configurator (private)
+### The generated bundle (never source-controlled)
 
-> Scaffolded from `Dildz/Portfolio-Page` (cloned locally at `/home/ubuntu/github-repos/Portfolio-Page`). Same stack: Next.js 16 App Router · React 19 · TypeScript 5 · Tailwind v4 · ESLint flat. Same deploy model: multi-stage Dockerfile → static export → behind the existing shared Caddy proxy on the Oracle VPS.
-
-```
-setup-spt-fika-docker/
-├── README.md
-├── package.json                     copies from Portfolio-Page; adds yaml deps if needed
-├── tsconfig.json                    copy as-is
-├── eslint.config.mjs                copy as-is
-├── postcss.config.mjs               copy as-is
-├── next.config.ts                   copy as-is
-├── app/
-│   ├── layout.tsx                   Reframed title/description; keep Geist fonts
-│   ├── page.tsx                     The configurator itself (form + preview)
-│   ├── globals.css                  @import "tailwindcss";
-│   └── components/                  Tabs, FormField, YamlPreview, Bundle download
-├── lib/
-│   ├── compose-emitter.ts           Form-state → docker-compose.yml string
-│   ├── env-emitter.ts               Form-state → .env string
-│   ├── bundle.ts                    Form-state → zip download (compose+.env+README+setup-host.sh)
-│   └── schema.ts                    Form schema; mirrors spt-fika-server/docs/env-vars.md
-├── public/                          Logos, favicons
-└── deploy/
-    ├── Dockerfile                   Multi-stage Next.js → static export → nginx serve
-    ├── docker-compose.yml           Service on existing caddy-proxy-network
-    └── caddy-snippet.txt            Block to paste into existing Caddyfile
-```
-
-**Why private:** the configurator could expose proprietary defaults, server keys, or moderation logic over time. Public would be fine for the OSS itself, but a private repo keeps options open. The image repo stays public.
-
-### 6c. The bundle the configurator generates (delivered as a downloadable zip)
-
-This is the "product" the end user receives — never lives in source control.
+The configurator emits a zip — the product the end user runs:
 
 ```
 spt-fika-bundle-<timestamp>/
-├── README.md                        Quick-start: "run docker compose up -d, then..."
-├── docker-compose.yml               Generated from form state
-├── .env                             Generated from form state
-├── setup-host.sh                    Optional: systemd units + log dirs + UID/GID
-└── systemd/                         Templates the script installs
-    ├── fika-server-logs.service
-    └── fika-headless-logs.service   (only present if headless was opted in)
+├── README.md            Quick-start: "run docker compose up -d, then..."
+├── docker-compose.yml   from form state
+├── .env                 from form state
+├── setup-host.sh        optional: systemd units + log dirs + UID/GID (Phase 5)
+└── systemd/*.service    templates the script installs (headless one only if opted in)
 ```
 
 ---
@@ -408,7 +370,7 @@ Six tabs. Defaults match the most common setup; everything is changeable.
 | **OPS** | Profile backups (enable / frequency / retention), auto-update toggles, restart policy, host-side log capture | profile backup, auto-update, log capture, restart policy |
 | **ADV** | UID/GID, custom env passthrough, dev/debug toggles, MoreBots & ABPS bot-cap overrides | UID/GID, edge-case operational knobs |
 
-Tab content detail (field-by-field — names, defaults, helpers, validation, env-var mapping) lives in `app/lib/schema.ts` in the configurator repo. The schema is the single source of truth; the form renders it; the YAML emitter consumes it. **DESIGN.md does not duplicate the field list** — the schema file is authoritative and will drift over time.
+Tab content detail (field-by-field — names, defaults, helpers, validation, env-var mapping) lives in `configurator/lib/schema.ts`. The schema is the single source of truth; the form renders it; the YAML emitter consumes it. **DESIGN.md does not duplicate the field list** — the schema file is authoritative and will drift over time.
 
 ### 9c. Live preview
 
@@ -472,12 +434,11 @@ Insurance: keep both the `~/github-repos/fika-headless-docker-3.11` clone and th
 
 ## 12. Phased build plan
 
-Phases are gated on the **image repo** completing first. The configurator is meaningless without an image to deploy. The configurator and image evolve independently after Phase 1.
+Phases are gated on the **image** (`image/`) completing first. The configurator is meaningless without an image to deploy. The two folders evolve independently after Phase 1.
 
-**Phase 1 — Image skeleton (`dildz/spt-fika-server`)**
-- Restructure `next` branch per §6a (drop `install.sh`, `update.sh`, `.env.example`, top-level `docker-compose.yml`).
-- Carry forward cosmetics from current `main` into `cosmetics/`.
-- Multi-major Dockerfile per §7 (4.0 branch implemented; 3.11 branch stubbed behind §13 Q1).
+**Phase 1 — Image skeleton (`image/`)**
+- ✅ Monorepo skeleton laid out on `UI-Configurator` (`image/`, `configurator/`, `docs/`); cosmetics + `ModSync.Updater.exe` + `restart-fika.sh` carried over from the old repo.
+- Multi-major Dockerfile per §7 (4.0 branch implemented; 3.11 branch per §13 Q1 — now resolved).
 - Document the env-var contract in `docs/env-vars.md` — this becomes the contract the configurator targets.
 
 **Phase 2 — Image features**
@@ -485,8 +446,8 @@ Phases are gated on the **image repo** completing first. The configurator is mea
 - Wire `init-server.sh` to call them based on env.
 - Test 4.0 path end-to-end on the current x86 box.
 
-**Phase 3 — Configurator (`dildz/setup-spt-fika-docker`, private)**
-- Scaffold by copying from `/home/ubuntu/github-repos/Portfolio-Page` per §6b.
+**Phase 3 — Configurator (`configurator/`)**
+- Scaffold by copying from `/home/ubuntu/github-repos/Portfolio-Page` into `configurator/` per §6.
 - Build the 6-tab form per §9b; live YAML preview per §9c.
 - Bundle generator per §9d.
 - Client-side version detection via GitHub releases API.
@@ -502,11 +463,11 @@ Phases are gated on the **image repo** completing first. The configurator is mea
 - Opt-in via a checkbox on the OPS tab; bundle download adds it when checked.
 - Idempotent; safe to re-run.
 
-**Phase 6 — Optional CI**
-- GH Actions on the image repo: watch SPT + Fika releases → bump versions → rebuild image → publish.
-- GH Actions on the configurator repo: build + push container on every merge to `main` → trigger deploy on Oracle VPS.
+**Phase 6 — Optional CI** (path-filtered workflows in the one repo)
+- `image/` workflow: watch SPT + Fika releases → bump versions → rebuild image → publish to GHCR.
+- `configurator/` workflow: build + push container on merge to `main` → trigger deploy on the VPS.
 
-**Merge `next` → `main` and rename the image repo `SPT-FIKA-OracleARM--Docker-Guide` → `spt-fika-server`** when Phase 4 ships and is verified end-to-end.
+**Merge `UI-Configurator` → `main`** when Phase 4 ships and is verified end-to-end. No repo rename — the repo keeps its name (and its stars).
 
 ---
 
