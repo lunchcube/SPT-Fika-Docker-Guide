@@ -1,0 +1,38 @@
+All docker compose commands need to be run in the spt-fika/files directory.
+
+Build Command:
+docker-compose build --no-cache spt-fika
+
+Bring up the container & view logs:
+docker-compose up -d spt-fika && docker-compose logs -f spt-fika
+
+View logs:
+docker-compose logs -f spt-fika
+docker logs spt-fika -f
+tail -f /home/ubuntu/docker/containers/spt-fika/logs/spt-fika.log
+
+Stop the container:
+docker-compose stop spt-fika
+
+Start the container:
+docker-compose start spt-fika && docker-compose logs -f spt-fika
+
+Restart the container:
+docker-compose restart spt-fika && docker-compose logs -f spt-fika
+
+Remove the container:
+docker-compose rm -f spt-fika
+
+List all images:
+docker images -a
+
+Remove an image:
+docker rmi spt-fika
+
+Remove all unused images:
+docker image prune
+
+Remove all unused containers:
+docker builder prune
+
+sudo rm -rf $HOME/docker/containers/spt-fika/server/*
