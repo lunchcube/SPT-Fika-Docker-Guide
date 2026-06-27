@@ -24,4 +24,27 @@ Two surfaces, one image-driven contract:
 
 ## Status
 
-Phase 0 — design complete, implementation not started. See `DESIGN.md` §12 for the phase plan.
+**Phase 1 in progress.** The 4.0 image **builds from source and boots a verified SPT 4.0 server**
+(`SPT.Server.dll` run via `dotnet`). Still to come: `docs/env-vars.md`, the Phase 2 feature scripts, and the
+3.11 build path. See `DESIGN.md` §12 for the full phase plan.
+
+## Build & test the image (dev, 4.0)
+
+Build amd64 locally and smoke-test in an isolated container — use a free host port + throwaway volume so it
+never collides with a running server:
+
+```bash
+# build (amd64). SPT_VERSION must be a valid sp-tarkov/server-csharp tag.
+docker build image/ -t spt-fika-server:4.0.13 \
+    --build-arg SPT_MAJOR=4 --build-arg SPT_VERSION=4.0.13
+
+# run isolated, then watch it boot
+docker run -d --name spt-test -p 6979:6969 -v "$PWD/.test-data":/opt/server spt-fika-server:4.0.13
+docker logs -f spt-test            # → "Server has started, happy playing"
+curl -k https://localhost:6979/launcher/ping
+
+# tear down
+docker rm -f spt-test && rm -rf .test-data
+```
+
+> ARM64 builds compile under QEMU emulation (slow) and aren't wired up yet — that's Phase 4.

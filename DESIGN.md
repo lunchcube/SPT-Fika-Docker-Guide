@@ -438,8 +438,8 @@ Phases are gated on the **image** (`image/`) completing first. The configurator 
 
 **Phase 1 — Image skeleton (`image/`)**
 - ✅ Monorepo skeleton laid out on `UI-Configurator` (`image/`, `configurator/`, `docs/`); cosmetics + `ModSync.Updater.exe` + `restart-fika.sh` carried over from the old repo.
-- Multi-major Dockerfile per §7 (4.0 branch implemented; 3.11 branch per §13 Q1 — now resolved).
-- Document the env-var contract in `docs/env-vars.md` — this becomes the contract the configurator targets.
+- ✅ 4.0 `image/Dockerfile` + `image/init-server.sh` built from source and **verified booting a healthy SPT 4.0 server** (2026-06-27). 3.11 branch present but unverified (§13 Q1 resolved).
+- Document the env-var contract in `docs/env-vars.md` — this becomes the contract the configurator targets. ← next
 
 **Phase 2 — Image features**
 - `install_fika.sh`, `auto_update.sh`, `profile_backup.sh`, `install_other_mods.sh`.
