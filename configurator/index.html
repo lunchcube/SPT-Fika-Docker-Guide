@@ -3,69 +3,151 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SPT-Fika Server Configurator</title>
-  <meta name="description" content="Generate a ready-to-run Docker Compose stack for a self-hosted SPT-Fika server." />
+  <title>SPT-Fika Deploy — Tarkov co-op server configurator</title>
+  <meta name="description" content="Kit out a self-hosted SPT-Fika (co-op Escape from Tarkov) server and extract a ready-to-run Docker Compose bundle." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header class="topbar">
-    <span class="brand">SetupSPT-FIKA <span class="dim">Server Configurator</span></span>
-    <a class="ghlink" href="https://github.com/Dildz/SPT-Fika-Docker-Guide" target="_blank" rel="noreferrer">GitHub</a>
+    <a class="brand" href="#top">
+      <span class="crest">
+        <img src="https://avatars.githubusercontent.com/u/169623369?s=72&v=4" alt="SPT" onerror="this.style.display='none'" />
+        <img src="https://avatars.githubusercontent.com/u/168129051?s=72&v=4" alt="Fika" onerror="this.style.display='none'" />
+      </span>
+      <span class="brand-text">SPT-FIKA <em>Deploy</em></span>
+    </a>
+    <a class="gh" href="https://github.com/Dildz/SPT-Fika-Docker-Guide" target="_blank" rel="noreferrer">GitHub ↗</a>
   </header>
 
-  <main>
+  <main id="top">
+    <!-- HERO -->
     <section class="hero">
-      <h1>SPT-FIKA Server Setup</h1>
-      <p class="lede">Generate your Docker Compose configuration in seconds — no backend, nothing leaves your browser.</p>
+      <div class="hero-copy">
+        <p class="eyebrow">SPT · FIKA · DOCKER</p>
+        <h1>Deploy your<br><span class="hl">Tarkov raid server</span></h1>
+        <p class="lede">Kit out a self-hosted SPT-Fika co-op server, watch it assemble live, and extract a ready-to-run Docker Compose bundle. No account, nothing leaves your browser.</p>
+        <div class="hero-cta">
+          <a class="btn btn-primary" href="#configurator">Start configurator ▸</a>
+          <a class="btn btn-ghost" href="#guide">Field guide</a>
+        </div>
+      </div>
+
+      <!-- signature: HUD boot readout -->
+      <div class="readout" aria-hidden="true">
+        <div class="readout-bar">
+          <span class="dot live"></span>
+          <span class="readout-title">assemble.sh</span>
+          <span class="readout-meta">tty1</span>
+        </div>
+        <pre class="readout-body" id="boot"></pre>
+      </div>
     </section>
 
-    <section class="quickstart">
-      <ol>
-        <li><b>1 Prerequisites</b><span>Install Docker</span></li>
-        <li><b>2 Configuration</b><span>Customize the tabs</span></li>
-        <li><b>3 Download</b><span>Get the .zip bundle</span></li>
-        <li><b>4 Deploy</b><span>docker compose up -d</span></li>
-        <li><b>5 First run</b><span>Watch the logs boot</span></li>
-        <li><b>6 Play</b><span>Connect the SPT launcher</span></li>
+    <!-- FEATURE STRIP -->
+    <section class="features">
+      <article class="feat">
+        <span class="feat-glyph">⛏</span>
+        <h3>Built from source</h3>
+        <p>SPT is compiled per architecture, so one image runs native on amd64 and arm64 alike.</p>
+      </article>
+      <article class="feat feat-co">
+        <span class="feat-glyph">⇄</span>
+        <h3>Fika-ready</h3>
+        <p>The Fika co-op mod installs on first boot, pinned to the version you choose.</p>
+      </article>
+      <article class="feat">
+        <span class="feat-glyph">▣</span>
+        <h3>One portable bundle</h3>
+        <p>Compose + <code>.env</code> + a quick-start README. Runs on any Docker host.</p>
+      </article>
+      <article class="feat">
+        <span class="feat-glyph">↻</span>
+        <h3>Reconfigure anytime</h3>
+        <p>Change options, re-extract, redeploy. No rebuild, no rewriting your stack.</p>
+      </article>
+    </section>
+
+    <!-- CONFIGURATOR -->
+    <section class="configurator" id="configurator">
+      <header class="sec-head">
+        <p class="eyebrow">Build your deployment</p>
+        <h2>The loadout</h2>
+        <p class="sec-sub">Set your options on the left; the manifest on the right updates as you go. Defaults are a working co-op server — change only what you need.</p>
+      </header>
+
+      <div class="workspace">
+        <div class="panel form-panel">
+          <div id="tabbar" class="tabbar"></div>
+          <div id="fields" class="fields"></div>
+          <div class="actions">
+            <button id="reset" class="btn btn-ghost" type="button">Reset</button>
+            <button id="download" class="btn btn-primary" type="button">⤓ Extract bundle (.zip)</button>
+          </div>
+        </div>
+
+        <div class="panel preview-panel">
+          <div class="preview-head">
+            <span class="dot"></span>
+            <span id="preview-name" class="preview-name">docker-compose.yml</span>
+            <div class="preview-tools">
+              <button id="btn-yaml" class="seg active" type="button">YAML</button>
+              <button id="btn-env" class="seg" type="button">.env</button>
+              <button id="copy" class="seg" type="button">Copy</button>
+            </div>
+          </div>
+          <pre id="code" class="code"></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- FIELD GUIDE / CHECKLIST -->
+    <section class="guide" id="guide">
+      <header class="sec-head">
+        <p class="eyebrow">After extract</p>
+        <h2>Deployment checklist</h2>
+      </header>
+      <ol class="checklist">
+        <li><h3>Drop the bundle on your host</h3><p>Unzip it into a folder. <code>docker-compose.yml</code> and <code>.env</code> must sit together.</p></li>
+        <li><h3>Bring it up</h3><p>Run <code>docker compose up -d</code>, then <code>docker compose logs -f</code> to watch the Fika install and the server boot.</p></li>
+        <li><h3>Open the port</h3><p>The server listens on your chosen port (default <code>6969</code>). Open it on your firewall/router if friends connect over the internet.</p></li>
+        <li><h3>Connect</h3><p>Point the SPT launcher at <code>https://your-server-ip:6969</code> and raid.</p></li>
+        <li><h3>Back up before updates</h3><p>Your data directory holds profiles and mods — copy it before changing SPT versions.</p></li>
       </ol>
     </section>
 
-    <section class="workspace">
-      <div class="panel form-panel">
-        <div id="tabbar" class="tabbar"></div>
-        <div id="fields" class="fields"></div>
-        <div class="actions">
-          <button id="reset" class="ghost" type="button">Reset to defaults</button>
-          <button id="download" type="button">⤓ Download bundle (.zip)</button>
-        </div>
-      </div>
-
-      <div class="panel preview-panel">
-        <div class="preview-head">
-          <span id="preview-name" class="preview-name">docker-compose.yml</span>
-          <div class="preview-tools">
-            <button id="btn-yaml" class="seg active" type="button">YAML</button>
-            <button id="btn-env" class="seg" type="button">.env</button>
-            <button id="copy" class="ghost" type="button">Copy</button>
-          </div>
-        </div>
-        <pre id="code" class="code"></pre>
+    <!-- FAQ -->
+    <section class="faq">
+      <header class="sec-head">
+        <p class="eyebrow">Briefing</p>
+        <h2>Questions</h2>
+      </header>
+      <div class="faq-list">
+        <details><summary>Do I need to own Escape from Tarkov?</summary><p>No game files are bundled or required to run the server. SPT is a single-player/co-op server stack — see the SPT and Fika projects for client setup.</p></details>
+        <details><summary>Where do my profiles and mods live?</summary><p>In the data directory you set (default <code>./server-data</code>), bind-mounted into the container. They persist across restarts and updates.</p></details>
+        <details><summary>How do I update SPT or Fika?</summary><p>For SPT, pull a new image tag and <code>docker compose up -d</code>. For Fika, set <code>AUTO_UPDATE_FIKA</code> and bump the version — it reinstalls in place, keeping your config.</p></details>
+        <details><summary>Can friends join over the internet?</summary><p>Yes — keep "Listen on all networks" on and forward your game port. Each player still installs the SPT launcher and Fika client.</p></details>
+        <details><summary>x86 or ARM?</summary><p>The image is multi-arch, so the server runs on either. The headless client is x86-only, so the configurator hides it when you pick ARM.</p></details>
       </div>
     </section>
 
-    <section class="guide">
-      <h2>Deployment checklist</h2>
-      <ul>
-        <li>Run <code>docker compose up -d</code>, then <code>docker compose logs -f</code> to watch the Fika install and server boot.</li>
-        <li>The server listens on your chosen port (default <code>6969</code>). Open it on your firewall / router if friends connect over the internet.</li>
-        <li>Server files live in your data directory — back it up before changing SPT versions.</li>
-        <li>To reconfigure: change options here, re-download, replace the files, and <code>docker compose up -d</code> again.</li>
-      </ul>
+    <!-- SHARE -->
+    <section class="share">
+      <h2>Pass it on</h2>
+      <p>Share the configurator so your squad deploys the same way.</p>
+      <div class="share-row">
+        <a class="btn btn-ghost" href="https://twitter.com/intent/tweet?text=Generate%20a%20Docker%20Compose%20bundle%20for%20your%20SPT-Fika%20server&url=https://github.com/Dildz/SPT-Fika-Docker-Guide" target="_blank" rel="noreferrer">Share on X</a>
+        <a class="btn btn-ghost" href="https://www.reddit.com/submit?url=https://github.com/Dildz/SPT-Fika-Docker-Guide&title=SPT-Fika%20server%20Docker%20Compose%20generator" target="_blank" rel="noreferrer">Share on Reddit</a>
+        <button class="btn btn-ghost" id="share-copy" type="button">Copy link</button>
+      </div>
     </section>
   </main>
 
   <footer class="foot">
-    Static generator · <a href="https://github.com/Dildz/SPT-Fika-Docker-Guide" target="_blank" rel="noreferrer">SPT-Fika-Docker-Guide</a>
+    <span>Static generator · nothing leaves your browser</span>
+    <a href="https://github.com/Dildz/SPT-Fika-Docker-Guide" target="_blank" rel="noreferrer">SPT-Fika-Docker-Guide</a>
   </footer>
 
   <script src="zip.js"></script>

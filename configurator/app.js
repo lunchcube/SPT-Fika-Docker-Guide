@@ -339,6 +339,35 @@ function init() {
     for (const k in FIELDS) state[k] = FIELDS[k].def;
     saveState(); render();
   };
+  const sc = $("share-copy");
+  if (sc) sc.onclick = async () => {
+    try { await navigator.clipboard.writeText(location.href); flash(sc, "Copied"); } catch {}
+  };
+  bootReadout();
+}
+
+// Signature hero animation: reveal a faux assemble manifest line by line.
+function bootReadout() {
+  const el = $("boot");
+  if (!el) return;
+  const lines = [
+    '<span class="cmd">spt-fika@deploy:~$</span> ./assemble.sh --fika',
+    '<span class="ok">✓</span> image    <span class="key">ghcr.io/dildz/spt-fika-server:4.0.13</span>',
+    '<span class="ok">✓</span> fika mod <span class="key">2.3.2</span>',
+    '<span class="ok">✓</span> listen   <span class="key">0.0.0.0:6969</span>',
+    '<span class="ok">✓</span> mods     <span class="key">0 extra</span>',
+    '<span class="ok">✓</span> bundle   compose · .env · readme',
+    '<span class="ready">● READY</span> — extract &amp; docker compose up -d',
+  ];
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    el.innerHTML = lines.join("\n"); return;
+  }
+  let i = 0;
+  (function next() {
+    if (i >= lines.length) return;
+    el.innerHTML += (i ? "\n" : "") + lines[i++];
+    setTimeout(next, 360);
+  })();
 }
 
 function flash(btn, msg) {
