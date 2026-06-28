@@ -13,12 +13,14 @@
 <body>
   <header class="topbar">
     <a class="brand" href="#top">
-      <span class="crest">
-        <img src="https://avatars.githubusercontent.com/u/169623369?s=72&v=4" alt="SPT" onerror="this.style.display='none'" />
-        <img src="https://avatars.githubusercontent.com/u/168129051?s=72&v=4" alt="Fika" onerror="this.style.display='none'" />
-      </span>
       <span class="brand-text">SPT-FIKA <em>Deploy</em></span>
     </a>
+    <nav class="nav">
+      <a href="#configurator" data-nav>Configurator</a>
+      <a href="#guide" data-nav>Guide</a>
+      <a href="#faq" data-nav>FAQ</a>
+      <a href="#support" data-nav>Support</a>
+    </nav>
     <a class="gh" href="https://github.com/Dildz/SPT-Fika-Docker-Guide" target="_blank" rel="noreferrer">GitHub ↗</a>
   </header>
 
@@ -32,17 +34,37 @@
         <div class="hero-cta">
           <a class="btn btn-primary" href="#configurator">Start configurator ▸</a>
           <a class="btn btn-ghost" href="#guide">Field guide</a>
+          <a class="btn btn-ghost" href="#faq">FAQ</a>
         </div>
       </div>
 
-      <!-- signature: HUD boot readout -->
-      <div class="readout" aria-hidden="true">
-        <div class="readout-bar">
-          <span class="dot live"></span>
-          <span class="readout-title">assemble.sh</span>
-          <span class="readout-meta">tty1</span>
+      <div class="hero-aside">
+        <div class="idlock">
+          <figure class="idchip">
+            <img src="https://avatars.githubusercontent.com/u/169623369?s=160&v=4" alt="Single Player Tarkov" onerror="this.closest('.idlock').remove()" />
+            <figcaption class="role role-spt">Server</figcaption>
+          </figure>
+          <span class="idplus">+</span>
+          <figure class="idchip">
+            <img src="https://avatars.githubusercontent.com/u/168129051?s=160&v=4" alt="Project Fika" />
+            <figcaption class="role role-fika">Co-op</figcaption>
+          </figure>
+          <span class="idplus">+</span>
+          <figure class="idchip">
+            <img class="idghost" src="https://avatars.githubusercontent.com/u/168129051?s=160&v=4" alt="Fika headless client" />
+            <figcaption class="role role-headless">Headless</figcaption>
+          </figure>
         </div>
-        <pre class="readout-body" id="boot"></pre>
+
+        <!-- signature: HUD boot readout -->
+        <div class="readout" aria-hidden="true">
+          <div class="readout-bar">
+            <span class="dot live"></span>
+            <span class="readout-title">assemble.sh</span>
+            <span class="readout-meta">tty1</span>
+          </div>
+          <pre class="readout-body" id="boot"></pre>
+        </div>
       </div>
     </section>
 
@@ -119,7 +141,7 @@
     </section>
 
     <!-- FAQ -->
-    <section class="faq">
+    <section class="faq" id="faq">
       <header class="sec-head">
         <p class="eyebrow">Briefing</p>
         <h2>Questions</h2>
@@ -130,17 +152,24 @@
         <details><summary>How do I update SPT or Fika?</summary><p>For SPT, pull a new image tag and <code>docker compose up -d</code>. For Fika, set <code>AUTO_UPDATE_FIKA</code> and bump the version — it reinstalls in place, keeping your config.</p></details>
         <details><summary>Can friends join over the internet?</summary><p>Yes — keep "Listen on all networks" on and forward your game port. Each player still installs the SPT launcher and Fika client.</p></details>
         <details><summary>x86 or ARM?</summary><p>The image is multi-arch, so the server runs on either. The headless client is x86-only, so the configurator hides it when you pick ARM.</p></details>
+        <details><summary>What does the headless client do?</summary><p>It's an optional Fika client that runs unmanned to host raids, so players can join even when nobody's hosting. It's x86-only and off by default — turn it on in the HEADLESS tab.</p></details>
+        <details><summary>How do I add other mods?</summary><p>Paste archive URLs (<code>.zip</code> or <code>.7z</code>) into the MODS tab, one per line. Each is downloaded once on boot and installed; the archive must contain a <code>user/</code> and/or <code>BepInEx/</code> folder at its root.</p></details>
+        <details><summary>Does anything I enter get uploaded?</summary><p>No. This is a static page with no backend — your options never leave the browser, and the bundle is built locally. You can even run it offline.</p></details>
+        <details><summary>How are my profiles backed up?</summary><p>SPT 4.0 backs up profiles itself. For extra safety, copy your data directory before changing SPT versions — it holds your profiles, mods and configs.</p></details>
       </div>
     </section>
 
-    <!-- SHARE -->
-    <section class="share">
-      <h2>Pass it on</h2>
-      <p>Share the configurator so your squad deploys the same way.</p>
-      <div class="share-row">
-        <a class="btn btn-ghost" href="https://twitter.com/intent/tweet?text=Generate%20a%20Docker%20Compose%20bundle%20for%20your%20SPT-Fika%20server&url=https://github.com/Dildz/SPT-Fika-Docker-Guide" target="_blank" rel="noreferrer">Share on X</a>
-        <a class="btn btn-ghost" href="https://www.reddit.com/submit?url=https://github.com/Dildz/SPT-Fika-Docker-Guide&title=SPT-Fika%20server%20Docker%20Compose%20generator" target="_blank" rel="noreferrer">Share on Reddit</a>
-        <button class="btn btn-ghost" id="share-copy" type="button">Copy link</button>
+    <!-- SUPPORT / LINKS -->
+    <section class="support" id="support">
+      <p class="eyebrow">Resupply</p>
+      <h2>Support &amp; links</h2>
+      <p class="support-sub">Fika is a coffee break — if this saved you one, the dev wouldn't turn down a real one. Links are placeholders for now.</p>
+      <div class="link-row">
+        <!-- TODO: swap these for real URLs -->
+        <a class="btn btn-primary" href="https://ko-fi.com/yourhandle" target="_blank" rel="noreferrer">☕ Ko-fi</a>
+        <a class="btn btn-ghost" href="https://github.com/Dildz/SPT-Fika-Docker-Guide" target="_blank" rel="noreferrer">GitHub</a>
+        <a class="btn btn-ghost" href="#" target="_blank" rel="noreferrer">Discord</a>
+        <a class="btn btn-ghost" href="#" target="_blank" rel="noreferrer">Wiki</a>
       </div>
     </section>
   </main>
