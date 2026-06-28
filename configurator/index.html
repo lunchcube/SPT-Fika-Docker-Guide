@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SPT-Fika Server Configurator</title>
+  <meta name="description" content="Generate a ready-to-run Docker Compose stack for a self-hosted SPT-Fika server." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <span class="brand">SetupSPT-FIKA <span class="dim">Server Configurator</span></span>
+    <a class="ghlink" href="https://github.com/Dildz/SPT-Fika-Docker-Guide" target="_blank" rel="noreferrer">GitHub</a>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>SPT-FIKA Server Setup</h1>
+      <p class="lede">Generate your Docker Compose configuration in seconds — no backend, nothing leaves your browser.</p>
+    </section>
+
+    <section class="quickstart">
+      <ol>
+        <li><b>1 Prerequisites</b><span>Install Docker</span></li>
+        <li><b>2 Configuration</b><span>Customize the tabs</span></li>
+        <li><b>3 Download</b><span>Get the .zip bundle</span></li>
+        <li><b>4 Deploy</b><span>docker compose up -d</span></li>
+        <li><b>5 First run</b><span>Watch the logs boot</span></li>
+        <li><b>6 Play</b><span>Connect the SPT launcher</span></li>
+      </ol>
+    </section>
+
+    <section class="workspace">
+      <div class="panel form-panel">
+        <div id="tabbar" class="tabbar"></div>
+        <div id="fields" class="fields"></div>
+        <div class="actions">
+          <button id="reset" class="ghost" type="button">Reset to defaults</button>
+          <button id="download" type="button">⤓ Download bundle (.zip)</button>
+        </div>
+      </div>
+
+      <div class="panel preview-panel">
+        <div class="preview-head">
+          <span id="preview-name" class="preview-name">docker-compose.yml</span>
+          <div class="preview-tools">
+            <button id="btn-yaml" class="seg active" type="button">YAML</button>
+            <button id="btn-env" class="seg" type="button">.env</button>
+            <button id="copy" class="ghost" type="button">Copy</button>
+          </div>
+        </div>
+        <pre id="code" class="code"></pre>
+      </div>
+    </section>
+
+    <section class="guide">
+      <h2>Deployment checklist</h2>
+      <ul>
+        <li>Run <code>docker compose up -d</code>, then <code>docker compose logs -f</code> to watch the Fika install and server boot.</li>
+        <li>The server listens on your chosen port (default <code>6969</code>). Open it on your firewall / router if friends connect over the internet.</li>
+        <li>Server files live in your data directory — back it up before changing SPT versions.</li>
+        <li>To reconfigure: change options here, re-download, replace the files, and <code>docker compose up -d</code> again.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="foot">
+    Static generator · <a href="https://github.com/Dildz/SPT-Fika-Docker-Guide" target="_blank" rel="noreferrer">SPT-Fika-Docker-Guide</a>
+  </footer>
+
+  <script src="zip.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

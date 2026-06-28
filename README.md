@@ -18,16 +18,17 @@ Two surfaces, one image-driven contract:
 | Path | What |
 |---|---|
 | `image/` | The Docker image — `Dockerfile`, `scripts/`, `cron/`, `cosmetics/`, `headless/`, `mod-pack/` |
-| `configurator/` | The Next.js web configurator (Phase 3) |
+| `configurator/` | The web configurator — a static single-page app (Phase 3) |
 | `docs/` | Env-var contract, operations, troubleshooting |
 | `DESIGN.md` | Architecture + phased build plan |
 
 ## Status
 
-**Phase 2 (4.0) done — verified.** The 4.0 image builds from source, boots a verified SPT 4.0 server
+**Phases 2–3 (4.0) done.** The 4.0 image builds from source, boots a verified SPT 4.0 server
 (`SPT.Server.dll` run via `dotnet`), and on boot installs the **Fika server mod** plus any extra mods you
-list — all env-driven. Still to come: the Phase 3 web configurator and the 3.11 build path. See
-`DESIGN.md` §12 for the full phase plan.
+list — all env-driven. The **[web configurator](configurator/)** (a static page) generates a ready-to-run
+`docker-compose.yml` + `.env` bundle from a form. Still to come: deploy the configurator, and the 3.11 build
+path. See `DESIGN.md` §12 for the full phase plan.
 
 ## Configure
 

@@ -9,7 +9,7 @@
 
 A **turnkey, configurable Docker stack** for self-hosting SPT-FIKA. Two surfaces:
 
-1. **A web configurator** (`setup-spt-fika.<your-domain>`) — Next.js app with a form-driven UI on the left and a live `docker-compose.yml` preview on the right. The host picks options, downloads a bundle (`compose.yml` + `.env` + a quick-start README), and runs `docker compose up -d`.
+1. **A web configurator** (`setup-spt-fika.<your-domain>`) — a static single-page app (plain HTML/CSS/JS) with a form-driven UI on the left and a live `docker-compose.yml` preview on the right. The host picks options, downloads a bundle (`compose.yml` + `.env` + a quick-start README), and runs `docker compose up -d`.
 2. **A multi-arch Docker image** (`ghcr.io/dildz/spt-fika-server:<version>`) — the same image used by everyone, parameterised entirely through env vars. All version branching (SPT 3.11 vs 4.0), Fika installation, auto-update, mod handling, profile backups live *inside* the image, not in any installer.
 
 The configurator is *dumb on purpose* — it just emits YAML from form state. All operational complexity lives in the image's env-var contract. This mirrors [setuphytale.com](https://setuphytale.com) / godstepx's `docker-hytale-server` pattern; both surfaces are independently deployable and updateable.
@@ -178,19 +178,22 @@ SPT-Fika-Docker-Guide/               (branch: UI-Configurator)
 │   ├── mod-pack/ModSync.Updater.exe         Opt-in client-side installer                        ✓ carried
 │   └── headless/                    wine-tkg + ntsync image, Outshynd base (§11)
 │       └── Dockerfile · entrypoint.sh · run-game.sh · monitor-logs.sh
-├── configurator/                    ── the Next.js web app (Phase 3) ──
-│   ├── package.json · tsconfig.json · eslint.config.mjs · next.config.ts   (from Portfolio-Page)
-│   ├── app/                         layout · page (form+preview) · components/
-│   ├── lib/                         compose-emitter · env-emitter · bundle · schema (mirrors docs/env-vars.md)
-│   ├── public/
-│   └── deploy/                      Dockerfile (static export) · docker-compose.yml · caddy-snippet.txt
+├── configurator/                    ── static single-page web app (Phase 3) ──
+│   ├── index.html                  page: hero · quick-start · tabs+preview · checklist
+│   ├── app.js                      schema (form surface) · emitters (compose/.env/README) · validation
+│   ├── zip.js                      tiny store-only zip writer (browser + Node)
+│   ├── styles.css
+│   ├── test_emit.cjs · test_zip.cjs   offline checks (node, no browser)
+│   └── deploy/                      Dockerfile (nginx) · docker-compose.yml · caddy-snippet.txt
 └── docs/
-    ├── env-vars.md                  AUTHORITATIVE contract — configurator's schema mirrors this
+    ├── env-vars.md                  AUTHORITATIVE contract — configurator's form mirrors this
     ├── architecture.md · operations.md · troubleshooting.md · version-compatibility.md
     └── operations-notes.txt         raw notes carried from old repo → fold into operations.md   ✓ carried
 ```
 
-**Why monorepo (was three repos):** for a solo maintainer, one place to clone and track beats juggling repos; and the image and configurator share one env-var contract (`docs/env-vars.md` ↔ `configurator/lib/schema.ts`), so co-locating keeps that contract honest. Cost: the public repo also holds a Next.js app — mitigated by the hard `image/` vs `configurator/` split and per-folder CI. The earlier "configurator must be private" idea is moot: nothing in it is secret — it's a dumb client-side YAML emitter.
+**Why monorepo (was three repos):** for a solo maintainer, one place to clone and track beats juggling repos; and the image and configurator share one env-var contract (`docs/env-vars.md` ↔ `configurator/app.js` schema), so co-locating keeps that contract honest. The earlier "configurator must be private" idea is moot: nothing in it is secret — it's a dumb client-side YAML emitter.
+
+**Why plain HTML/JS, not Next.js (revised 2026-06-28):** the configurator is a single page, no routing, no backend, no SSR — everything runs client-side. A framework (Next/React/Tailwind, `npm install`, a build step, `node_modules`) is pure overhead for that. A static `index.html` + `app.js` + `zip.js` does the identical job, has no toolchain, and drops straight into the existing nginx+Caddy static-serve pattern. The earlier Portfolio-Page/Next.js scaffold plan is dropped.
 
 ### The generated bundle (never source-controlled)
 
@@ -320,7 +323,7 @@ User runs `docker compose up -d`; gets exactly what they configured. Re-configur
 
 ## 9. Configurator UX
 
-The user-facing surface. A single Next.js page at `setup-spt-fika.<your-domain>` with a two-column layout: tabbed form on the left, live YAML preview on the right. Modelled on [setuphytale.com](https://setuphytale.com).
+The user-facing surface. A single static page (plain HTML/CSS/JS) at `setup-spt-fika.<your-domain>` with a two-column layout: tabbed form on the left, live YAML preview on the right. Modelled on [setuphytale.com](https://setuphytale.com) (itself a single client-side page; the framework underneath it is incidental).
 
 ### 9a. Page layout
 
@@ -370,11 +373,11 @@ Six tabs. Defaults match the most common setup; everything is changeable.
 | **OPS** | Profile backups (enable / frequency / retention), auto-update toggles, restart policy, host-side log capture | profile backup, auto-update, log capture, restart policy |
 | **ADV** | UID/GID, custom env passthrough, dev/debug toggles, MoreBots & ABPS bot-cap overrides | UID/GID, edge-case operational knobs |
 
-Tab content detail (field-by-field — names, defaults, helpers, validation, env-var mapping) lives in `configurator/lib/schema.ts`. The schema is the single source of truth; the form renders it; the YAML emitter consumes it. **DESIGN.md does not duplicate the field list** — the schema file is authoritative and will drift over time.
+Tab content detail (field-by-field — names, defaults, helpers, validation, env-var mapping) lives in the `TABS` schema in `configurator/app.js`. The schema is the single source of truth; the form renders it; the emitters consume the resulting state. **DESIGN.md does not duplicate the field list** — `app.js` is authoritative and will drift over time.
 
 ### 9c. Live preview
 
-Right pane shows `docker-compose.yml` by default, with a small toggle for `.env` (the bundle has both). Syntax-highlighted via `shiki` (or `react-syntax-highlighter`; final pick deferred to implementation). Copy + download icons in the top-right of the panel.
+Right pane shows `docker-compose.yml` by default, with a small toggle for `.env` (the bundle has both). Rendered as a plain `<pre>` with line numbers — no syntax-highlighter dependency (zero deps beat pretty here). Copy + download controls in the top-right of the panel.
 
 ### 9d. Bundle download
 
@@ -389,7 +392,7 @@ Architecture-aware: on aarch64 hosts, the bundle omits headless service blocks e
 
 ### 9e. Behavioural rules
 
-- **No backend.** The configurator is a static Next.js export. No data leaves the browser; the bundle is generated client-side and offered as a blob URL.
+- **No backend.** The configurator is a static page. No data leaves the browser; the bundle is generated client-side (`zip.js`) and offered as a blob URL.
 - **Version detection client-side.** On page load, fetch latest SPT and Fika versions from the GitHub releases API (`api.github.com`). Cache for 1h via `localStorage`. Fall back gracefully if rate-limited.
 - **Form state survives reload.** Persist to `localStorage` so refreshing doesn't wipe a half-filled form.
 - **Headless tab is reactive to arch.** A user-selectable "Host arch" radio in GENERAL controls whether HEADLESS is enabled — no `uname` shenanigans (we're in a browser).
@@ -446,12 +449,12 @@ Phases are gated on the **image** (`image/`) completing first. The configurator 
 - Wire `init-server.sh` to call them based on env.
 - Test 4.0 path end-to-end on the current x86 box.
 
-**Phase 3 — Configurator (`configurator/`)**
-- Scaffold by copying from `/home/ubuntu/github-repos/Portfolio-Page` into `configurator/` per §6.
-- Build the 6-tab form per §9b; live YAML preview per §9c.
-- Bundle generator per §9d.
-- Client-side version detection via GitHub releases API.
-- Deploy as a sibling service behind the existing Caddy on the Oracle VPS.
+**Phase 3 — Configurator (`configurator/`) — DONE 2026-06-28**
+- ✅ Static single-page app (plain HTML/CSS/JS, no framework/build) per §6 — `index.html` + `app.js` + `zip.js` + `styles.css`.
+- ✅ 6-tab form (§9b) mapped to the real `docs/env-vars.md` contract; live compose/`.env` preview (§9c); zip bundle generator (§9d, hand-rolled `zip.js`).
+- ✅ Arch-gated headless (§9e); inline validation; localStorage persistence. Offline checks: `test_emit.cjs` + `test_zip.cjs`. Emitted compose validated via `docker compose config`.
+- `deploy/` (nginx Dockerfile + compose + caddy snippet) written; actual deploy behind the Oracle VPS Caddy is a separate step.
+- Deferred: client-side version detection via GitHub releases API (version fields are free-text defaults for now).
 
 **Phase 4 — Multi-arch image publish**
 - Buildx pipeline, GHCR push.
@@ -480,12 +483,12 @@ Phases are gated on the **image** (`image/`) completing first. The configurator 
 - **Mod compatibility detection:** if the configurator's MODS tab lets a user pick a 3.11-incompatible mod for a 4.0 build, do we warn inline? Defer to a per-mod manifest scheme; out of scope for Phase 3.
 - **Storage layout on update:** does the image's `update.sh`-equivalent need different behaviour between 3.11 (Node user/profiles structure) and 4.0 (`SPT/user/profiles`)? Almost certainly yes — needs per-version backup config in `scripts/profile_backup.sh`.
 
-### Configurator (Phase 3)
-- **Hosting subdomain:** Confirm the URL — `setup-spt-fika.duckdns.org`? Something on a custom domain? Affects Caddyfile entry and any SEO copy.
-- **GitHub releases API rate limits:** Anonymous calls are 60/hour per IP. Acceptable for individual hosts opening the page once, but a busy day could hit the limit. Need a graceful fallback (cached release lists shipped with the build, refreshed on each `next build`).
-- **YAML preview library choice:** `shiki` (heavy but accurate) vs `react-syntax-highlighter` (lighter) vs DIY Tailwind classes (zero deps, ugly). Decide during implementation; not a blocker.
-- **Form validation library:** plain React + custom validators, or `react-hook-form` + `zod`? The latter is ~30KB extra but pays back in DX and structured error rendering. Lean toward `zod` since the schema's already going to be typed.
-- **Bundle versioning:** Should the downloaded bundle include a `version.json` stamp pointing back to the image tag it was generated for? Useful for `setup-host.sh` to verify compatibility on later re-runs. Probably yes.
+### Configurator (Phase 3 — mostly resolved by the static-page build)
+- **Hosting subdomain:** Still open — confirm the URL (`setup-spt-fika.<domain>`?). Affects the Caddyfile entry. The `deploy/caddy-snippet.txt` has a placeholder.
+- **GitHub releases API rate limits:** Moot until live version detection is built (deferred — version fields are free-text defaults). If added: anon is 60/hour/IP; fall back to the shipped defaults on rate-limit.
+- **YAML preview library choice:** RESOLVED — plain `<pre>` + line numbers, zero deps.
+- **Form validation library:** RESOLVED — plain JS validators in `app.js` (no React, no `zod`).
+- **Bundle versioning:** Open — a `version.json` stamp in the bundle (pointing at the image tag) would help `setup-host.sh` verify compatibility on re-runs. Probably yes; revisit in Phase 5.
 
 ### Bundle / setup-host.sh (Phase 5)
 - **ufw vs iptables:** What firewall does the script assume on the host? Likely `ufw` (Ubuntu/Debian default) with `iptables` fallback.

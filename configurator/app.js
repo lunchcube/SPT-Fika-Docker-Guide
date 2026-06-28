@@ -1,0 +1,350 @@
+// SPT-Fika configurator — form state → docker-compose.yml + .env + README bundle.
+// No backend, no framework: the form mirrors docs/env-vars.md (the image contract),
+// emits compose/.env client-side, and downloads a zip (see zip.js).
+
+// ---- schema: the form surface. Defaults = the most common Fika server. ----
+const TABS = [
+  { id: "general", label: "GENERAL", fields: [
+    { key: "serverName", label: "Server name", type: "text", def: "spt-fika",
+      help: "Container name + compose service id.", re: /^[a-zA-Z0-9_.-]+$/ },
+    { key: "dataDir", label: "Data directory", type: "text", def: "./server-data",
+      help: "Host path bind-mounted to /opt/server (profiles, mods, configs persist here)." },
+    { key: "gamePort", label: "Game port", type: "number", def: 6969,
+      help: "Host port mapped to the server's 6969. Clients connect here.", min: 1, max: 65535 },
+    { key: "arch", label: "Host architecture", type: "radio", def: "x86_64",
+      options: [["x86_64", "x86_64 (Intel/AMD)"], ["aarch64", "aarch64 (ARM)"]],
+      help: "Headless is x86-only — selecting ARM disables the HEADLESS tab." },
+    { key: "listenAll", label: "Listen on all networks", type: "toggle", def: true,
+      help: "Bind 0.0.0.0 so LAN / remote Fika clients can reach the server. Usually on." },
+  ]},
+  { id: "version", label: "VERSION", fields: [
+    { key: "sptMajor", label: "SPT major", type: "select", def: "4",
+      options: [["4", "4.0 (current)"], ["3", "3.11 (LTS — build unverified)"]],
+      help: "Picks the server build/run path." },
+    { key: "sptVersion", label: "SPT version", type: "text", def: "4.0.13",
+      help: "Image tag = a valid sp-tarkov/server-csharp tag (4.x) or server tag (3.11).", req: true },
+    { key: "installFika", label: "Install Fika", type: "toggle", def: true,
+      help: "Install the Fika server mod on first boot." },
+    { key: "fikaVersion", label: "Fika version", type: "text", def: "2.3.2",
+      help: "Release tag of project-fika/Fika-Server-CSharp.", req: true },
+  ]},
+  { id: "headless", label: "HEADLESS", arch: "x86_64", fields: [
+    { key: "headlessEnabled", label: "Enable headless client", type: "toggle", def: false,
+      help: "Adds a headless Fika client service (interim zhliau image; native image is a later phase)." },
+    { key: "headlessTag", label: "Headless image tag", type: "text", def: "latest",
+      help: "Tag of ghcr.io/zhliau/fika-headless-docker." },
+    { key: "numHeadlessProfiles", label: "Headless profiles", type: "number", def: "",
+      help: "Optional — sets headless.profiles.amount in fika.jsonc. Leave blank for none.", min: 0, max: 10 },
+  ]},
+  { id: "mods", label: "MODS", fields: [
+    { key: "modUrls", label: "Mod URLs", type: "textarea", def: "",
+      help: "One archive URL per line (.zip / .7z). Each must contain user/ and/or BepInEx/ at its root." },
+  ]},
+  { id: "ops", label: "OPS", fields: [
+    { key: "restartPolicy", label: "Restart policy", type: "select", def: "unless-stopped",
+      options: [["unless-stopped", "unless-stopped"], ["always", "always"],
+                ["on-failure", "on-failure"], ["no", "no"]],
+      help: "Docker restart policy for the service." },
+    { key: "autoUpdateFika", label: "Auto-update Fika", type: "toggle", def: false,
+      help: "Reinstall the pinned Fika version on boot if already installed (preserves fika.jsonc)." },
+    { key: "verboseLogs", label: "Verbose logs", type: "toggle", def: true,
+      help: "Off filters high-frequency request spam (keepalive / ping / heartbeat)." },
+  ]},
+  { id: "adv", label: "ADV", fields: [
+    { key: "puid", label: "PUID", type: "number", def: 1000, min: 0, max: 65535,
+      help: "User id the server runs as / owns the mount." },
+    { key: "pgid", label: "PGID", type: "number", def: 1000, min: 0, max: 65535,
+      help: "Group id the server runs as." },
+    { key: "userName", label: "User name", type: "text", def: "spt", re: /^[a-zA-Z0-9_-]+$/,
+      help: "Name for a created user (ignored if PUID already exists on the host)." },
+    { key: "groupName", label: "Group name", type: "text", def: "spt", re: /^[a-zA-Z0-9_-]+$/,
+      help: "Name for a created group." },
+  ]},
+];
+
+const FIELDS = {};
+for (const t of TABS) for (const f of t.fields) FIELDS[f.key] = f;
+
+const STORE_KEY = "spt-fika-configurator";
+let state = loadState();
+let activeTab = "general";
+let previewMode = "compose"; // "compose" | "env"
+
+function loadState() {
+  const s = {};
+  for (const k in FIELDS) s[k] = FIELDS[k].def;
+  try { Object.assign(s, JSON.parse(localStorage.getItem(STORE_KEY) || "{}")); } catch {}
+  return s;
+}
+function saveState() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch {} }
+
+// ---- validation: returns { key: message } for invalid fields ----
+function validate() {
+  const e = {};
+  for (const k in FIELDS) {
+    const f = FIELDS[k], v = state[k];
+    if (f.type === "number" && v !== "") {
+      const n = Number(v);
+      if (!Number.isInteger(n) || n < f.min || n > f.max) e[k] = `Must be ${f.min}–${f.max}.`;
+    }
+    if (f.req && String(v).trim() === "") e[k] = "Required.";
+    if (f.re && String(v).trim() !== "" && !f.re.test(String(v))) e[k] = "Invalid characters.";
+  }
+  return e;
+}
+
+// ---- emitters ----
+function headlessOn() { return state.headlessEnabled && state.arch === "x86_64"; }
+
+function emitCompose() {
+  const s = state, svc = s.serverName || "spt-fika";
+  const L = [
+    "# SPT-FIKA Server — docker-compose.yml",
+    "# Generated by the SPT-Fika configurator",
+    "# https://github.com/Dildz/SPT-Fika-Docker-Guide",
+    "",
+    "services:",
+    `  ${svc}:`,
+    "    image: ghcr.io/dildz/spt-fika-server:${SPT_VERSION}",
+    `    container_name: ${svc}`,
+    `    restart: ${s.restartPolicy}`,
+    "    ports:",
+    `      - "${s.gamePort}:6969"`,
+    "    env_file: .env",
+    "    volumes:",
+    `      - ${s.dataDir}:/opt/server`,
+  ];
+  if (headlessOn()) {
+    L.push(
+      "",
+      "  # Headless Fika client — interim image; native headless image is a later phase.",
+      `  ${svc}-headless:`,
+      "    image: ghcr.io/zhliau/fika-headless-docker:${HEADLESS_TAG:-latest}",
+      `    container_name: ${svc}-headless`,
+      `    restart: ${s.restartPolicy}`,
+      "    depends_on:",
+      `      - ${svc}`,
+      "    environment:",
+      `      SPT_BACKEND_URL: "http://${svc}:6969"`,
+    );
+  }
+  return L.join("\n") + "\n";
+}
+
+function emitEnv() {
+  const s = state;
+  const L = [
+    "# SPT-FIKA Server — environment (.env)",
+    "# Generated by the SPT-Fika configurator. See docs/env-vars.md.",
+    "",
+    `SPT_MAJOR=${s.sptMajor}`,
+    `SPT_VERSION=${s.sptVersion}`,
+    `INSTALL_FIKA=${s.installFika}`,
+    `FIKA_VERSION=${s.fikaVersion}`,
+    `AUTO_UPDATE_FIKA=${s.autoUpdateFika}`,
+    `LISTEN_ALL_NETWORKS=${s.listenAll}`,
+    `VERBOSE_LOGS=${s.verboseLogs}`,
+    `PUID=${s.puid}`,
+    `PGID=${s.pgid}`,
+    `USER_NAME=${s.userName}`,
+    `GROUP_NAME=${s.groupName}`,
+  ];
+  if (headlessOn()) {
+    L.push(`HEADLESS_TAG=${s.headlessTag}`);
+    if (String(s.numHeadlessProfiles).trim() !== "") L.push(`NUM_HEADLESS_PROFILES=${s.numHeadlessProfiles}`);
+  }
+  const urls = String(s.modUrls).trim().split(/\s+/).filter(Boolean);
+  if (urls.length) L.push(`MOD_URLS="${urls.join(" ")}"`);
+  return L.join("\n") + "\n";
+}
+
+function emitReadme() {
+  const s = state;
+  return [
+    "# SPT-FIKA Server — quick start",
+    "",
+    "Generated by the SPT-Fika configurator.",
+    "",
+    "1. Install Docker + Docker Compose.",
+    "2. Put `docker-compose.yml` and `.env` in a folder together.",
+    "3. Start it:",
+    "",
+    "   ```",
+    "   docker compose up -d",
+    "   ```",
+    "",
+    `4. Watch the first boot (Fika install + server start):`,
+    "",
+    "   ```",
+    `   docker compose logs -f ${s.serverName}`,
+    "   ```",
+    "",
+    `5. Connect the SPT launcher to \`https://<your-server-ip>:${s.gamePort}\`.`,
+    "",
+    `Server files persist in \`${s.dataDir}\`. To change settings, regenerate the bundle and \`docker compose up -d\` again.`,
+    "",
+  ].join("\n");
+}
+
+function bundleFiles() {
+  return [
+    { name: "docker-compose.yml", content: emitCompose() },
+    { name: ".env", content: emitEnv() },
+    { name: "README.md", content: emitReadme() },
+  ];
+}
+
+// ---- rendering ----
+const $ = (id) => document.getElementById(id);
+
+function renderTabs() {
+  const bar = $("tabbar");
+  bar.innerHTML = "";
+  for (const t of TABS) {
+    const b = document.createElement("button");
+    b.className = "tab" + (t.id === activeTab ? " active" : "");
+    b.textContent = t.label;
+    const disabled = t.arch && t.arch !== state.arch;
+    if (disabled) { b.classList.add("disabled"); b.title = "x86_64 only"; }
+    b.onclick = () => { if (!disabled) { activeTab = t.id; render(); } };
+    bar.appendChild(b);
+  }
+}
+
+function renderFields() {
+  const tab = TABS.find((t) => t.id === activeTab);
+  const host = $("fields");
+  host.innerHTML = "";
+  const errs = validate();
+  const tabDisabled = tab.arch && tab.arch !== state.arch;
+
+  for (const f of tab.fields) {
+    const wrap = document.createElement("label");
+    wrap.className = "field";
+
+    const head = document.createElement("div");
+    head.className = "field-label";
+    head.textContent = f.label;
+    wrap.appendChild(head);
+
+    let input;
+    const disabled = tabDisabled || (tab.id === "headless" && f.key !== "headlessEnabled" && !state.headlessEnabled);
+
+    if (f.type === "toggle") {
+      input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = !!state[f.key];
+      input.onchange = () => set(f.key, input.checked, true);
+      wrap.classList.add("toggle");
+    } else if (f.type === "select") {
+      input = document.createElement("select");
+      for (const [val, lbl] of f.options) {
+        const o = document.createElement("option");
+        o.value = val; o.textContent = lbl; o.selected = state[f.key] === val;
+        input.appendChild(o);
+      }
+      input.onchange = () => set(f.key, input.value, true);
+    } else if (f.type === "radio") {
+      input = document.createElement("div");
+      input.className = "radio-row";
+      for (const [val, lbl] of f.options) {
+        const r = document.createElement("button");
+        r.type = "button";
+        r.className = "radio" + (state[f.key] === val ? " active" : "");
+        r.textContent = lbl;
+        r.onclick = () => set(f.key, val, true);
+        input.appendChild(r);
+      }
+    } else if (f.type === "textarea") {
+      input = document.createElement("textarea");
+      input.rows = 5;
+      input.value = state[f.key];
+      input.oninput = () => set(f.key, input.value, false);
+    } else {
+      input = document.createElement("input");
+      input.type = f.type === "number" ? "number" : "text";
+      input.value = state[f.key];
+      input.oninput = () => set(f.key, input.value, false);
+    }
+    if (disabled && input.tagName) input.disabled = true;
+    wrap.appendChild(input);
+
+    const help = document.createElement("div");
+    help.className = "help";
+    help.textContent = f.help;
+    wrap.appendChild(help);
+
+    if (errs[f.key]) {
+      const err = document.createElement("div");
+      err.className = "error";
+      err.textContent = errs[f.key];
+      wrap.appendChild(err);
+    }
+    host.appendChild(wrap);
+  }
+}
+
+function renderPreview() {
+  $("preview-name").textContent = previewMode === "compose" ? "docker-compose.yml" : ".env";
+  $("btn-yaml").classList.toggle("active", previewMode === "compose");
+  $("btn-env").classList.toggle("active", previewMode === "env");
+  const text = previewMode === "compose" ? emitCompose() : emitEnv();
+  const code = $("code");
+  code.innerHTML = "";
+  text.replace(/\n$/, "").split("\n").forEach((line, i) => {
+    const ln = document.createElement("span");
+    ln.className = "ln";
+    ln.textContent = String(i + 1).padStart(3, " ");
+    const tx = document.createElement("span");
+    tx.textContent = " " + line;
+    const row = document.createElement("div");
+    row.append(ln, tx);
+    code.appendChild(row);
+  });
+
+  const errs = validate();
+  $("download").disabled = Object.keys(errs).length > 0;
+}
+
+function render() { renderTabs(); renderFields(); renderPreview(); }
+
+// rerenderTab=true when a change can flip disabled/active states (toggle/select/radio);
+// for free-typing we only refresh the preview so the input keeps focus.
+function set(key, val, rerenderTab) {
+  const f = FIELDS[key];
+  state[key] = f && f.type === "number" && val !== "" ? Number(val) : val;
+  saveState();
+  if (rerenderTab) render();
+  else { renderFields(); renderPreview(); }
+}
+
+// ---- actions ----
+function init() {
+  render();
+  $("btn-yaml").onclick = () => { previewMode = "compose"; renderPreview(); };
+  $("btn-env").onclick = () => { previewMode = "env"; renderPreview(); };
+  $("copy").onclick = async () => {
+    const text = previewMode === "compose" ? emitCompose() : emitEnv();
+    try { await navigator.clipboard.writeText(text); flash($("copy"), "Copied"); } catch {}
+  };
+  $("download").onclick = () => {
+    const bytes = makeZip(bundleFiles());
+    const blob = new Blob([bytes], { type: "application/zip" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `${state.serverName}-bundle.zip`; a.click();
+    URL.revokeObjectURL(url);
+  };
+  $("reset").onclick = () => {
+    for (const k in FIELDS) state[k] = FIELDS[k].def;
+    saveState(); render();
+  };
+}
+
+function flash(btn, msg) {
+  const old = btn.textContent;
+  btn.textContent = msg;
+  setTimeout(() => { btn.textContent = old; }, 1200);
+}
+
+document.addEventListener("DOMContentLoaded", init);

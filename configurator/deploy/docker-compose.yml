@@ -1,0 +1,16 @@
+# Deploys the configurator behind the existing shared Caddy proxy.
+# Build context is the configurator/ root (one level up), so the Dockerfile can
+# COPY the static files. No published ports — Caddy fronts it on the shared network.
+services:
+  spt-fika-configurator:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: spt-fika-configurator
+    restart: unless-stopped
+    networks:
+      - caddy-proxy-network
+
+networks:
+  caddy-proxy-network:
+    external: true

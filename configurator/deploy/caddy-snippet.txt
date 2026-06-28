@@ -1,0 +1,6 @@
+# Add to your existing Caddyfile (the shared caddy-proxy), then reload Caddy.
+# Replace the hostname with your own domain/subdomain.
+
+setup-spt-fika.your-domain.duckdns.org {
+    reverse_proxy spt-fika-configurator:80
+}
