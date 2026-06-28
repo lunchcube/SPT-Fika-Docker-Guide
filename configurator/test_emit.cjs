@@ -33,7 +33,11 @@ checks([
 state.arch = "x86_64"; state.headlessEnabled = true; state.headlessTag = "latest";
 checks([
   [emitCompose().includes("spt-fika-headless"), "headless service on x86"],
+  [emitCompose().includes("25565:25565/udp"), "headless P2P udp port"],
+  [emitCompose().includes("SERVER_URL: spt-fika"), "headless SERVER_URL = server service"],
+  [emitCompose().includes('condition: service_healthy'), "headless waits for healthy server"],
   [emitEnv().includes("HEADLESS_TAG=latest"), "HEADLESS_TAG emitted"],
+  [emitEnv().includes("HEADLESS_PROFILE_ID="), "HEADLESS_PROFILE_ID emitted"],
 ]);
 
 state.modUrls = "https://x/a.zip\\n  https://x/b.7z";
@@ -49,6 +53,17 @@ checks([
 state.sptMajor = "3";
 checks([[!emitEnv().includes("USE_MODSYNC"), "ModSync suppressed on SPT 3.11"]]);
 state.sptMajor = "4";
+
+checks([[!emitCompose().includes("fikawebapp"), "no web app by default"]]);
+state.webapp = true; state.webappApiKey = "abc123"; state.webappPort = 8080;
+checks([
+  [emitCompose().includes("lacyway/fikawebapp:latest"), "web app service emitted"],
+  [emitCompose().includes('"8080:5000"'), "web app port mapped"],
+  [emitCompose().includes("webappdata:/app/data"), "web app uses named volume"],
+  [/\\nvolumes:\\n  webappdata:/.test(emitCompose()), "named volume declared"],
+  [emitEnv().includes("WEBAPP_API_KEY=abc123"), "WEBAPP_API_KEY emitted"],
+]);
+state.webapp = false;
 
 state.arch = "aarch64";
 checks([[!emitCompose().includes("headless"), "headless suppressed on ARM"]]);
