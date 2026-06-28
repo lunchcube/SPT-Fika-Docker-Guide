@@ -68,6 +68,7 @@ listen_all_networks() {
 run_installers() {
     /opt/scripts/install_fika.sh "$SERVER"
     /opt/scripts/install_mods.sh "$SERVER"
+    /opt/scripts/install_modsync.sh "$SERVER"
     chown -R "$PUID:$PGID" "$SERVER"
 }
 

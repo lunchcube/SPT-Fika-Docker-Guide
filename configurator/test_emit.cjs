@@ -39,6 +39,17 @@ checks([
 state.modUrls = "https://x/a.zip\\n  https://x/b.7z";
 checks([[emitEnv().includes('MOD_URLS="https://x/a.zip https://x/b.7z"'), "MOD_URLS joined"]]);
 
+checks([[!emitEnv().includes("USE_MODSYNC"), "no ModSync vars when off"]]);
+state.useModsync = true; state.modsyncVersion = "0.12.5";
+checks([
+  [emitEnv().includes("USE_MODSYNC=true"), "USE_MODSYNC emitted"],
+  [emitEnv().includes("MODSYNC_VERSION=0.12.5"), "MODSYNC_VERSION emitted"],
+]);
+
+state.sptMajor = "3";
+checks([[!emitEnv().includes("USE_MODSYNC"), "ModSync suppressed on SPT 3.11"]]);
+state.sptMajor = "4";
+
 state.arch = "aarch64";
 checks([[!emitCompose().includes("headless"), "headless suppressed on ARM"]]);
 done();

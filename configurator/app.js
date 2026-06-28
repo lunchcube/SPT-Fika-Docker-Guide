@@ -37,6 +37,10 @@ const TABS = [
       help: "Optional — sets headless.profiles.amount in fika.jsonc. Leave blank for none.", min: 0, max: 10 },
   ]},
   { id: "mods", label: "MODS", fields: [
+    { key: "useModsync", label: "Install ModSync", type: "toggle", def: false,
+      help: "Adds the Corter-ModSync server mod so clients keep their mods in sync with the server. SPT 4.0 only for now (3.11 needs Corter's original mod)." },
+    { key: "modsyncVersion", label: "ModSync version", type: "text", def: "0.12.5",
+      help: "Release tag of Dildz/ModSync-for-SPT4.0." },
     { key: "modUrls", label: "Mod URLs", type: "textarea", def: "",
       help: "One archive URL per line (.zip / .7z). Each must contain user/ and/or BepInEx/ at its root." },
   ]},
@@ -153,6 +157,10 @@ function emitEnv() {
     L.push(`HEADLESS_TAG=${s.headlessTag}`);
     if (String(s.numHeadlessProfiles).trim() !== "") L.push(`NUM_HEADLESS_PROFILES=${s.numHeadlessProfiles}`);
   }
+  if (s.useModsync && s.sptMajor === "4") {
+    L.push("USE_MODSYNC=true");
+    L.push(`MODSYNC_VERSION=${s.modsyncVersion}`);
+  }
   const urls = String(s.modUrls).trim().split(/\s+/).filter(Boolean);
   if (urls.length) L.push(`MOD_URLS="${urls.join(" ")}"`);
   return L.join("\n") + "\n";
@@ -228,7 +236,11 @@ function renderFields() {
     wrap.appendChild(head);
 
     let input;
-    const disabled = tabDisabled || (tab.id === "headless" && f.key !== "headlessEnabled" && !state.headlessEnabled);
+    const modsyncField = f.key === "useModsync" || f.key === "modsyncVersion";
+    const disabled = tabDisabled
+      || (tab.id === "headless" && f.key !== "headlessEnabled" && !state.headlessEnabled)
+      || (f.key === "modsyncVersion" && !state.useModsync)
+      || (modsyncField && state.sptMajor !== "4"); // ModSync auto-install is SPT 4 only
 
     if (f.type === "toggle") {
       input = document.createElement("input");
@@ -339,11 +351,24 @@ function init() {
     for (const k in FIELDS) state[k] = FIELDS[k].def;
     saveState(); render();
   };
-  const sc = $("share-copy");
-  if (sc) sc.onclick = async () => {
-    try { await navigator.clipboard.writeText(location.href); flash(sc, "Copied"); } catch {}
-  };
   bootReadout();
+  initNav();
+}
+
+// Scroll-spy: highlight the top-bar link for whichever section is in view.
+function initNav() {
+  const links = [...document.querySelectorAll(".nav a[data-nav]")];
+  if (!links.length || !("IntersectionObserver" in window)) return;
+  const byId = new Map(links.map((a) => [a.getAttribute("href").slice(1), a]));
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      links.forEach((l) => l.classList.remove("active"));
+      const a = byId.get(e.target.id);
+      if (a) a.classList.add("active");
+    }
+  }, { rootMargin: "-45% 0px -50% 0px" });
+  byId.forEach((_, id) => { const el = $(id); if (el) io.observe(el); });
 }
 
 // Signature hero animation: reveal a faux assemble manifest line by line.

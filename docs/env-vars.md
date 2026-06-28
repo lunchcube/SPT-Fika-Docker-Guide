@@ -56,6 +56,25 @@ Read by `scripts/install_mods.sh`.
 |---|---|---|
 | `MOD_URLS` | _(empty)_ | Whitespace/newline-separated archive URLs. Each is downloaded once (tracked in `.installed_mod_urls`), extracted, and its `user/` + `BepInEx/` trees merged into the mount. Empty = no extra mods. Supports `.zip` and `.7z`; archives must carry `user/` and/or `BepInEx/` at their root. |
 
+## Runtime — ModSync (Phase 2)
+
+Read by `scripts/install_modsync.sh`. Installs the [Corter-ModSync](https://github.com/Dildz/ModSync-for-SPT4.0)
+server mod (the SPT 4.0 fork) so clients keep their mods in sync with the server.
+
+| Var | Default | Meaning |
+|---|---|---|
+| `USE_MODSYNC` | `false` | Install the ModSync server mod. Off by default (opt-in). **SPT 4 only** — ignored (with a logged skip) when `SPT_MAJOR=3`, since 3.11 needs Corter's original mod and a different layout. |
+| `MODSYNC_VERSION` | `0.12.5` | Release tag (without the `v`) of `Dildz/ModSync-for-SPT4.0` to install. |
+| `AUTO_UPDATE_MODSYNC` | `false` | Reinstall the pinned version on boot if already present, preserving your `config.jsonc`. |
+| `MODSYNC_URL` | _(derived)_ | Override the release-zip URL (e.g. a self-hosted mirror, or `file://` for testing). Normally leave unset. |
+
+**Placement note (SPT 4 specific):** the ModSync server mod loads only if the desktop
+updater and the client plugin exist *one level above* the SPT install — at `../ModSync.Updater.exe`
+and `../BepInEx/plugins/...` (the SPT-4 server runs from `<gameRoot>/SPT/`). The script puts the
+server mod in the mount (`user/mods/Corter-ModSync`, where your `config.jsonc` persists) and the
+client files at the game root (`/opt`, outside the mount), redeploying them on each boot. Getting
+this wrong is the `'../ModSync.Updater.exe' not found` failure seen with generic mod installers.
+
 ## Not env vars — handled elsewhere
 
 - **Profile backups.** SPT 4.0 backs profiles up natively (`SPT_Data/configs/backup.json`
