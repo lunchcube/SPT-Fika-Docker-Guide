@@ -11,10 +11,11 @@ set -e
 # assumes those trees sit at the archive root; add tar / nested-dir search only if a
 # real mod needs it. zhliau's download_unzip_install_mods.sh is the fuller reference.
 
-SERVER="${1:?server dir required}"
+ROOT="${1:?game root required}"
+SPT="$ROOT/SPT"   # server mods live in SPT/user/mods; client mods (BepInEx) at the game root
 [ -n "${MOD_URLS:-}" ] || { echo "No MOD_URLS set — skipping extra mods"; exit 0; }
 
-done_file="$SERVER/.installed_mod_urls"
+done_file="$ROOT/.installed_mod_urls"
 touch "$done_file"
 
 for url in $MOD_URLS; do
@@ -30,8 +31,8 @@ for url in $MOD_URLS; do
         *.7z)  7z x -y -o"$tmp/x" "$tmp/$file" >/dev/null ;;
         *) echo "  Unsupported archive '$file' — skipping"; rm -rf "$tmp"; continue ;;
     esac
-    [ -d "$tmp/x/user" ]    && cp -a "$tmp/x/user/."    "$SERVER/user/"
-    [ -d "$tmp/x/BepInEx" ] && { mkdir -p "$SERVER/BepInEx"; cp -a "$tmp/x/BepInEx/." "$SERVER/BepInEx/"; }
+    [ -d "$tmp/x/user" ]    && { mkdir -p "$SPT/user";  cp -a "$tmp/x/user/."    "$SPT/user/"; }    # server mods → SPT/user/mods
+    [ -d "$tmp/x/BepInEx" ] && { mkdir -p "$ROOT/BepInEx"; cp -a "$tmp/x/BepInEx/." "$ROOT/BepInEx/"; }  # client mods → game root (ModSync serves these)
     rm -rf "$tmp"
     echo "$url" >> "$done_file"
     echo "  installed $file"

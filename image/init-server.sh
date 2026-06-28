@@ -16,8 +16,14 @@ VERBOSE_LOGS="${VERBOSE_LOGS:-true}"
 LISTEN_ALL_NETWORKS="${LISTEN_ALL_NETWORKS:-false}"
 
 # ---- paths ----
+# The bind mount is the GAME ROOT (matches a real SPT 4 + Fika install): the SPT server
+# lives in the SPT/ subdir and runs from there, while client-facing files that ModSync
+# serves to clients (BepInEx/, EscapeFromTarkov_Data/, ModSync.Updater.exe) sit one level
+# up at the game root. The server's "../BepInEx" etc. therefore resolve INSIDE the mount,
+# so they persist and land exactly where ModSync expects them.
 IMAGE_SRC=/opt/SPT      # server compiled into the image (read-only baseline)
-SERVER=/opt/server      # host bind mount — persistent server files (profiles, mods, configs)
+SERVER=/opt/server      # host bind mount — the game root (persistent)
+SPT_DIR="$SERVER/SPT"   # the SPT server install; the server runs from here
 
 orange="\033[38;5;208m"; reset="\033[0m"
 
@@ -41,19 +47,20 @@ seed_server() {
     if [ -z "$(ls -A "$SERVER" 2>/dev/null)" ]; then
         echo -e "${orange}Note: $SERVER is empty — bind-mount a host dir here to persist server files.${reset}"
     fi
-    if [ ! -e "$SERVER/SPT_Data" ]; then
-        echo "First boot — seeding server files into $SERVER"
-        cp -a "$IMAGE_SRC/." "$SERVER/"
+    if [ ! -e "$SPT_DIR/SPT.Server.dll" ] && [ ! -e "$SPT_DIR/SPT.Server.exe" ]; then
+        echo "First boot — seeding server files into $SPT_DIR"
+        mkdir -p "$SPT_DIR"
+        cp -a "$IMAGE_SRC/." "$SPT_DIR/"
     else
-        echo "Existing server files found in $SERVER (version updates handled in Phase 2)"
+        echo "Existing server files found in $SPT_DIR (version updates handled in Phase 2)"
     fi
-    mkdir -p "$SERVER/user/mods" "$SERVER/user/profiles"
+    mkdir -p "$SPT_DIR/user/mods" "$SPT_DIR/user/profiles"
     chown -R "$PUID:$PGID" "$SERVER"
 }
 
 # Make the server bind to all interfaces (needed for LAN / Fika clients).
 listen_all_networks() {
-    local http="$SERVER/SPT_Data/configs/http.json"
+    local http="$SPT_DIR/SPT_Data/configs/http.json"
     if [ "$LISTEN_ALL_NETWORKS" = "true" ] && [ -f "$http" ]; then
         local patched
         patched="$(jq '.ip = "0.0.0.0" | .backendIp = "0.0.0.0"' "$http")" \
@@ -73,10 +80,10 @@ run_installers() {
 }
 
 run_server() {
-    cd "$SERVER"
+    cd "$SPT_DIR"   # cwd = <gameRoot>/SPT, so ModSync's "../" paths reach the game root
     case "$SPT_MAJOR" in
-        4) set -- dotnet "$SERVER/SPT.Server.dll" ;;   # 4.0: framework-dependent C# build
-        3) set -- "$SERVER/SPT.Server.exe" ;;          # 3.11: pkg Node bundle (UNVERIFIED)
+        4) set -- dotnet "$SPT_DIR/SPT.Server.dll" ;;   # 4.0: framework-dependent C# build
+        3) set -- "$SPT_DIR/SPT.Server.exe" ;;          # 3.11: pkg Node bundle (UNVERIFIED)
         *) echo "FATAL: unsupported SPT_MAJOR=$SPT_MAJOR" >&2; exit 1 ;;
     esac
 

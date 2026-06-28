@@ -54,7 +54,7 @@ Read by `scripts/install_mods.sh`.
 
 | Var | Default | Meaning |
 |---|---|---|
-| `MOD_URLS` | _(empty)_ | Whitespace/newline-separated archive URLs. Each is downloaded once (tracked in `.installed_mod_urls`), extracted, and its `user/` + `BepInEx/` trees merged into the mount. Empty = no extra mods. Supports `.zip` and `.7z`; archives must carry `user/` and/or `BepInEx/` at their root. |
+| `MOD_URLS` | _(empty)_ | Whitespace/newline-separated archive URLs. Each is downloaded once (tracked in `.installed_mod_urls`), extracted, and split into the game-root layout: a `user/` tree → `SPT/user/` (server mods), a `BepInEx/` tree → the game-root `BepInEx/` (client mods — where ModSync serves them). Empty = no extra mods. Supports `.zip` and `.7z`; archives must carry `user/` and/or `BepInEx/` at their root. |
 
 ## Runtime — ModSync (Phase 2)
 
@@ -68,12 +68,13 @@ server mod (the SPT 4.0 fork) so clients keep their mods in sync with the server
 | `AUTO_UPDATE_MODSYNC` | `false` | Reinstall the pinned version on boot if already present, preserving your `config.jsonc`. |
 | `MODSYNC_URL` | _(derived)_ | Override the release-zip URL (e.g. a self-hosted mirror, or `file://` for testing). Normally leave unset. |
 
-**Placement note (SPT 4 specific):** the ModSync server mod loads only if the desktop
-updater and the client plugin exist *one level above* the SPT install — at `../ModSync.Updater.exe`
-and `../BepInEx/plugins/...` (the SPT-4 server runs from `<gameRoot>/SPT/`). The script puts the
-server mod in the mount (`user/mods/Corter-ModSync`, where your `config.jsonc` persists) and the
-client files at the game root (`/opt`, outside the mount), redeploying them on each boot. Getting
-this wrong is the `'../ModSync.Updater.exe' not found` failure seen with generic mod installers.
+**Placement note (SPT 4 specific):** the bind mount is the **game root** and the SPT server runs
+from its `SPT/` subdir, so the ModSync server mod's required `../ModSync.Updater.exe` and
+`../BepInEx/plugins/...` resolve at the game root — i.e. **inside the mount**, persistent. The
+script puts the server mod in `SPT/user/mods/Corter-ModSync` (where your `config.jsonc` persists)
+and the client files (BepInEx + updater) at the game root, merging into `BepInEx/` so your own
+client mods stay. Client mods you add via `MOD_URLS` land in the same game-root `BepInEx/`, exactly
+where ModSync serves them to clients.
 
 ## Not env vars — handled elsewhere
 
