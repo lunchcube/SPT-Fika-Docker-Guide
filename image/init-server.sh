@@ -62,6 +62,15 @@ listen_all_networks() {
     fi
 }
 
+# Phase 2 installers: Fika server mod + any extra mods from MOD_URLS. Each script is
+# env-driven and no-ops when its feature is off. They run as root, so re-own the mount
+# afterwards — the mount always ends up PUID:PGID, never root (prevents undeletable files).
+run_installers() {
+    /opt/scripts/install_fika.sh "$SERVER"
+    /opt/scripts/install_mods.sh "$SERVER"
+    chown -R "$PUID:$PGID" "$SERVER"
+}
+
 run_server() {
     cd "$SERVER"
     case "$SPT_MAJOR" in
@@ -86,4 +95,5 @@ banner
 setup_user_and_group
 seed_server
 listen_all_networks
+run_installers
 run_server

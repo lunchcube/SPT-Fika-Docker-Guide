@@ -87,12 +87,13 @@ FROM mcr.microsoft.com/dotnet/aspnet:9.0-noble AS final
 ARG SPT_MAJOR
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        curl gosu jq \
+        curl gosu jq unzip p7zip-full \
  && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build-selected --chmod=755 /app/publish /opt/SPT
 
 COPY --chmod=755 init-server.sh /usr/bin/init-server
+COPY --chmod=755 scripts/ /opt/scripts/
 
 ENV SPT_MAJOR=${SPT_MAJOR}
 EXPOSE 6969
