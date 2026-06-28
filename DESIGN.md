@@ -454,12 +454,12 @@ Phases are gated on the **image** (`image/`) completing first. The configurator 
 - ✅ 6-tab form (§9b) mapped to the real `docs/env-vars.md` contract; live compose/`.env` preview (§9c); zip bundle generator (§9d, hand-rolled `zip.js`).
 - ✅ Arch-gated headless (§9e); inline validation; localStorage persistence. Offline checks: `test_emit.cjs` + `test_zip.cjs`. Emitted compose validated via `docker compose config`.
 - ✅ Live version auto-fill — SPT via the Forge API (`^4.0.0` filter), Fika via the GitHub releases API; both CORS-ok, fall back to static defaults, pin on user edit.
-- `deploy/` (nginx Dockerfile + compose + caddy snippet) written; actual deploy behind the Oracle VPS Caddy is the one open Phase-3 thread, folded into the **Phase 4 handover-pack** (it needs the real VPS, not this dev host).
+- ✅ **Deployed** (temporary) at **https://strato-vps.duckdns.org/sptfikadeploy/** — `nginx:alpine` serving copied static files under a `/sptfikadeploy` subpath behind the existing strato caddy (stack: `/home/ubuntu/docker/containers/spt-fika-deploy/`). **Subpath, not subdomain** — DuckDNS wildcard subdomains fail Let's Encrypt DNS validation, so it rides the apex's existing cert. The `deploy/` scaffold (subdomain + own network) is kept for the eventual move to a dedicated domain (`sptfikadeploy.com`).
 
 **Phase 4 — Multi-arch image publish + Oracle handover-pack**
 - **Execution model:** this dev host can't reach the ARM VPS, so Phase 4 ships as a **handover-pack** (`handover/`) — a self-contained bundle (brief + `verify-arm64.sh` + report template) moved to the Oracle box where it's run and the report comes back here.
 - ✅ **Round 1 — arm64 build + run + verify: DONE 2026-06-28** (Oracle aarch64 VPS, 16/16 checks pass @ `84a24f8`). Native arm64 build-from-source boots healthy; Fika + ModSync load clean (game-root `../` resolution holds on ARM); layout + ownership correct; also confirmed `PUID/PGID` honored for a non-1000 user (uid 1001). Isolated test, no other containers touched.
-- ◻ **Round 2 — publish + deploy:** GHCR multi-arch push (needs a PAT on the box + a `docker buildx` container-builder for the combined manifest) and deploy the configurator behind the Oracle Caddy (additive Caddyfile block + a duckdns subdomain on `caddy-proxy-network`). The configurator's headless gating on aarch64 is verified here too.
+- ✅ **Round 2 — publish + deploy: done.** GHCR multi-arch publish is handled by the CI workflow (image public, amd64+arm64 — no manual PAT/buildx needed). Configurator deployed (temporary) on the strato caddy at the subpath above. Remaining polish: move the configurator to a dedicated domain (`sptfikadeploy.com`) on the Oracle caddy when purchased.
 
 **Phase 5 — `setup-host.sh` (optional bundle component)**
 - Bash script the configurator ships inside the bundle. Installs systemd `fika-*-logs.service` units, creates host dirs, sets UID/GID, optionally opens ufw ports.

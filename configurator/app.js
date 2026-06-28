@@ -413,6 +413,15 @@ function set(key, val, rerenderTab) {
 // ---- actions ----
 function init() {
   render();
+  // Clamp the preview box to the form box height — scroll the YAML inside, so the
+  // two columns always line up regardless of which tab (and how many fields) is shown.
+  const formPanel = document.querySelector(".form-panel");
+  const previewPanel = document.querySelector(".preview-panel");
+  if (formPanel && previewPanel && "ResizeObserver" in window) {
+    const syncPreviewHeight = () => { previewPanel.style.height = formPanel.offsetHeight + "px"; };
+    new ResizeObserver(syncPreviewHeight).observe(formPanel);
+    syncPreviewHeight();
+  }
   $("btn-yaml").onclick = () => { previewMode = "compose"; renderPreview(); };
   $("btn-env").onclick = () => { previewMode = "env"; renderPreview(); };
   $("copy").onclick = async () => {
