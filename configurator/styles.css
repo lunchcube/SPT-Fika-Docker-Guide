@@ -229,6 +229,27 @@ section { scroll-margin-top: 72px; }
 .checklist h3 { font-size: 19px; text-transform: uppercase; letter-spacing: .03em; margin-bottom: 3px; }
 .checklist p { color: var(--muted); margin: 0; font-size: 14px; }
 
+.checklist .more { margin-top: 12px; }
+.checklist .more > summary {
+  cursor: pointer; list-style: none; display: inline-flex; align-items: center; gap: 7px;
+  font-family: "JetBrains Mono", monospace; font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--hazard);
+}
+.checklist .more > summary::-webkit-details-marker { display: none; }
+.checklist .more > summary::before { content: "+"; font-size: 15px; }
+.checklist .more[open] > summary::before { content: "−"; }
+.more-body { margin-top: 12px; }
+.more-body h4 { font-family: "Saira Condensed", sans-serif; font-size: 15px; text-transform: uppercase; letter-spacing: .04em; color: var(--bone); margin: 16px 0 5px; }
+.more-body h4:first-child { margin-top: 0; }
+.more-body p { color: var(--muted); margin: 0 0 9px; font-size: 14px; }
+.more-body ul { color: var(--muted); margin: 0 0 9px; padding-left: 18px; font-size: 14px; }
+.more-body li { margin: 5px 0; }
+.guide pre {
+  background: var(--bg); border: 1px solid var(--line); border-radius: var(--r);
+  padding: 12px 14px; margin: 0 0 10px; overflow-x: auto;
+  font-family: "JetBrains Mono", monospace; font-size: 12.5px; line-height: 1.65; color: var(--steel);
+}
+
 /* ---- faq ---- */
 .faq { padding: 24px 0 72px; }
 .faq-list { display: grid; gap: 8px; }
