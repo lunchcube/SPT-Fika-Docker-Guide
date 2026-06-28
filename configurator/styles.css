@@ -85,10 +85,12 @@ main { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
 
 /* ---- hero ---- */
 .hero {
-  display: grid; grid-template-columns: 1.05fr .95fr; gap: 48px; align-items: start;
+  display: grid; grid-template-columns: 1.05fr .95fr; gap: 48px; align-items: stretch;
   padding: 84px 0 64px;
 }
-.hero-aside { display: flex; flex-direction: column; gap: 22px; }
+/* margin-top ≈ the eyebrow's height, so the logo lockup starts level with the H1 ("DEPLOY YOUR")
+   rather than the eyebrow above it. */
+.hero-aside { display: flex; flex-direction: column; gap: 22px; margin-top: 31px; }
 .hero h1 {
   font-size: clamp(2.8rem, 6vw, 4.6rem); font-weight: 700; text-transform: uppercase;
   letter-spacing: .005em; margin: 0 0 20px;
@@ -112,6 +114,7 @@ main { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
 
 /* signature HUD readout */
 .readout {
+  margin-top: auto;   /* push the box to the bottom of the (full-height) column → bottom edge meets the buttons */
   border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
   background: linear-gradient(180deg, var(--surface-2), var(--surface));
   box-shadow: 0 0 0 1px rgba(239,123,42,.05), 0 24px 60px -30px rgba(0,0,0,.8);
