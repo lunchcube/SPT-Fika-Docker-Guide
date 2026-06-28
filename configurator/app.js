@@ -22,11 +22,11 @@ const TABS = [
       options: [["4", "4.0 (current)"], ["3", "3.11 (LTS — build unverified)"]],
       help: "Picks the server build/run path." },
     { key: "sptVersion", label: "SPT version", type: "text", def: "4.0.13",
-      help: "Image tag = a valid sp-tarkov/server-csharp tag (4.x) or server tag (3.11).", req: true },
+      help: "Auto-filled to the latest stable 4.0.x from the Forge on load; edit to pin a version. (A valid sp-tarkov/server-csharp tag.)", req: true },
     { key: "installFika", label: "Install Fika", type: "toggle", def: true,
       help: "Install the Fika server mod on first boot." },
     { key: "fikaVersion", label: "Fika version", type: "text", def: "2.3.2",
-      help: "Release tag of project-fika/Fika-Server-CSharp.", req: true },
+      help: "Auto-filled to the latest Fika server release on load; edit to pin a version. (Tag of project-fika/Fika-Server-CSharp.)", req: true },
   ]},
   { id: "headless", label: "HEADLESS", arch: "x86_64", fields: [
     { key: "headlessEnabled", label: "Enable headless client", type: "toggle", def: false,
@@ -403,6 +403,8 @@ function render() { renderTabs(); renderFields(); renderPreview(); }
 function set(key, val, rerenderTab) {
   const f = FIELDS[key];
   state[key] = f && f.type === "number" && val !== "" ? Number(val) : val;
+  if (key === "sptVersion") state.__pinnedSpt = true;   // user edited → stop auto-filling
+  if (key === "fikaVersion") state.__pinnedFika = true;
   saveState();
   if (rerenderTab) render();
   else { renderFields(); renderPreview(); }
@@ -427,10 +429,36 @@ function init() {
   };
   $("reset").onclick = () => {
     for (const k in FIELDS) state[k] = FIELDS[k].def;
-    saveState(); render();
+    delete state.__pinnedSpt; delete state.__pinnedFika;
+    saveState(); render(); detectVersions();
   };
   bootReadout();
   initNav();
+  detectVersions();
+}
+
+// Live version defaults — fetch the latest on load, fall back to the static field
+// defaults if a source is unreachable/rate-limited. SPT from the Forge (clean 4.0.x,
+// no beta tags); the Fika *server* version from its GitHub releases — what
+// install_fika.sh actually downloads. (The Forge "Project Fika" entry tracks the
+// client plugin, which can run ahead of the server.) A field the user has edited
+// is pinned and never overwritten.
+function detectVersions() {
+  if (typeof fetch !== "function") return;
+  const getJson = (url) =>
+    fetch(url, { headers: { Accept: "application/json" } }).then((r) => (r.ok ? r.json() : Promise.reject(r.status)));
+
+  getJson("https://forge.sp-tarkov.com/api/v0/spt/versions?filter%5Bspt_version%5D=%5E4.0.0&sort=-version&per_page=1&fields=version")
+    .then((j) => { const v = j && j.data && j.data[0] && j.data[0].version; if (v && !state.__pinnedSpt) applyVersion("sptVersion", v); })
+    .catch(() => {});
+
+  getJson("https://api.github.com/repos/project-fika/Fika-Server-CSharp/releases/latest")
+    .then((j) => { const v = j && j.tag_name && j.tag_name.replace(/^v/, ""); if (v && !state.__pinnedFika) applyVersion("fikaVersion", v); })
+    .catch(() => {});
+}
+function applyVersion(key, v) {
+  if (state[key] === v) return;
+  state[key] = v; saveState(); renderFields(); renderPreview();
 }
 
 // Scroll-spy: highlight the top-bar link for whichever section is in view.
