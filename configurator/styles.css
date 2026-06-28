@@ -183,9 +183,9 @@ section { scroll-margin-top: 72px; }
 .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--hazard); }
 .field input:disabled, .field select:disabled, .field textarea:disabled { opacity: .4; cursor: not-allowed; }
 .field.toggle { flex-direction: row; align-items: center; gap: 10px; flex-wrap: wrap; }
-.field.toggle .field-label { order: 2; }
-.field.toggle input { width: 18px; height: 18px; accent-color: var(--hazard); }
-.field.toggle .help, .field.toggle .error { flex-basis: 100%; }
+.field.toggle input { order: 0; width: 18px; height: 18px; accent-color: var(--hazard); }
+.field.toggle .field-label { order: 1; }            /* label sits inline, right of the checkbox */
+.field.toggle .help, .field.toggle .error { order: 2; flex-basis: 100%; }  /* wrap to the line below */
 .help { font-size: 12px; color: var(--dim); }
 .error { font-size: 12px; color: var(--danger); font-family: "JetBrains Mono", monospace; }
 
