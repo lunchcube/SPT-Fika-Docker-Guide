@@ -453,22 +453,22 @@ Phases are gated on the **image** (`image/`) completing first. The configurator 
 - ✅ Static single-page app (plain HTML/CSS/JS, no framework/build) per §6 — `index.html` + `app.js` + `zip.js` + `styles.css`.
 - ✅ 6-tab form (§9b) mapped to the real `docs/env-vars.md` contract; live compose/`.env` preview (§9c); zip bundle generator (§9d, hand-rolled `zip.js`).
 - ✅ Arch-gated headless (§9e); inline validation; localStorage persistence. Offline checks: `test_emit.cjs` + `test_zip.cjs`. Emitted compose validated via `docker compose config`.
-- `deploy/` (nginx Dockerfile + compose + caddy snippet) written; actual deploy behind the Oracle VPS Caddy is a separate step.
-- Deferred: client-side version detection via GitHub releases API (version fields are free-text defaults for now).
+- ✅ Live version auto-fill — SPT via the Forge API (`^4.0.0` filter), Fika via the GitHub releases API; both CORS-ok, fall back to static defaults, pin on user edit.
+- `deploy/` (nginx Dockerfile + compose + caddy snippet) written; actual deploy behind the Oracle VPS Caddy is the one open Phase-3 thread, folded into the **Phase 4 handover-pack** (it needs the real VPS, not this dev host).
 
-**Phase 4 — Multi-arch image publish**
-- Buildx pipeline, GHCR push.
-- Test on the current x86 box AND one ARM host (Oracle Free Tier).
-- Verify headless gating in the configurator on aarch64.
+**Phase 4 — Multi-arch image publish + Oracle handover-pack**
+- **Execution model:** this dev host can't reach the ARM VPS, so Phase 4 ships as a **handover-pack** (`handover/`) — a self-contained bundle (brief + `verify-arm64.sh` + report template) moved to the Oracle box where it's run and the report comes back here.
+- ✅ **Round 1 — arm64 build + run + verify: DONE 2026-06-28** (Oracle aarch64 VPS, 16/16 checks pass @ `84a24f8`). Native arm64 build-from-source boots healthy; Fika + ModSync load clean (game-root `../` resolution holds on ARM); layout + ownership correct; also confirmed `PUID/PGID` honored for a non-1000 user (uid 1001). Isolated test, no other containers touched.
+- ◻ **Round 2 — publish + deploy:** GHCR multi-arch push (needs a PAT on the box + a `docker buildx` container-builder for the combined manifest) and deploy the configurator behind the Oracle Caddy (additive Caddyfile block + a duckdns subdomain on `caddy-proxy-network`). The configurator's headless gating on aarch64 is verified here too.
 
 **Phase 5 — `setup-host.sh` (optional bundle component)**
 - Bash script the configurator ships inside the bundle. Installs systemd `fika-*-logs.service` units, creates host dirs, sets UID/GID, optionally opens ufw ports.
 - Opt-in via a checkbox on the OPS tab; bundle download adds it when checked.
 - Idempotent; safe to re-run.
 
-**Phase 6 — Optional CI** (path-filtered workflows in the one repo)
-- `image/` workflow: watch SPT + Fika releases → bump versions → rebuild image → publish to GHCR.
-- `configurator/` workflow: build + push container on merge to `main` → trigger deploy on the VPS.
+**Phase 6 — CI** (workflows in the one repo)
+- ✅ **`image/` publish workflow built** (`.github/workflows/build-image.yml`): `workflow_dispatch` (SPT version input) → builds amd64 + arm64 on **native runners** (`ubuntu-24.04` + `ubuntu-24.04-arm`, no QEMU), pushes by digest, merges to one multi-arch GHCR tag via `imagetools`. Auth = built-in `GITHUB_TOKEN` (no PAT). This replaces the manual 2-box push as the image-maintenance path. *One-time:* file must reach `main` (default-branch rule for dispatch); flip the new GHCR package to public after first run. Fika/ModSync are runtime → never trigger a rebuild.
+- Later: auto-trigger on upstream SPT releases (schedule + version check); `configurator/` deploy workflow.
 
 **Merge `UI-Configurator` → `main`** when Phase 4 ships and is verified end-to-end. No repo rename — the repo keeps its name (and its stars).
 
