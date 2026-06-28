@@ -141,14 +141,14 @@
             <summary>Set up a host &amp; Docker</summary>
             <div class="more-body">
               <h4>A free host</h4>
-              <p>No server lying around? <a href="https://www.oracle.com/cloud/free/" target="_blank" rel="noreferrer">Oracle Cloud's Always-Free tier</a> is plenty — up to 4 Arm cores, 24&nbsp;GB RAM, 200&nbsp;GB disk. It's Arm, which this image supports natively.</p>
+              <p>No server lying around? <a href="https://www.oracle.com/cloud/free/" target="_blank" rel="noreferrer">Oracle Cloud's Always-Free tier</a> is plenty — up to 4 Arm cores, 24&nbsp;GB RAM, 200&nbsp;GB disk. It's Arm, which the server image supports natively. <b>But the headless client is x86-only</b> — it won't run on an Arm host, so pick an x86 box if you want headless.</p>
               <h4>Connect to it</h4>
               <p>Easiest from Windows: <a href="https://code.visualstudio.com/download" target="_blank" rel="noreferrer">VSCode</a> with the <b>Remote Explorer</b> extension — edit files and run a terminal in one window over SSH. (PuTTY + WinSCP work too.) <b>Keep your SSH key safe</b> — lose it and you're locked out of the server.</p>
               <h4>Install Docker</h4>
               <p>Follow <a href="https://docs.docker.com/engine/install/ubuntu/" target="_blank" rel="noreferrer">Docker's official guide</a> (it stays current), or the short version on Ubuntu/Debian:</p>
               <pre>curl -fsSL https://get.docker.com | sudo sh
-sudo usermod -aG docker $USER   # run docker without sudo
-newgrp docker                   # apply it now
+sudo usermod -aG docker $USER   # add yourself to the docker group
+newgrp docker                   # apply it now — docker then runs without sudo
 docker compose version          # verify (Compose plugin ships with it)</pre>
             </div>
           </details>
@@ -204,6 +204,11 @@ docker compose pull &amp;&amp; docker compose up -d --wait     # update to a new
             <div class="more-body">
               <p>Allow/forward your game port (default <code>6969</code>) on the host firewall and your router. On a cloud VPS, also open it in the provider's security rules (e.g. Oracle's ingress rules).</p>
               <p>Fika links players peer-to-peer for raids, which can need extra port-forwarding or UPnP on the host player's side — see <a href="https://github.com/project-fika/Fika-Documentation" target="_blank" rel="noreferrer">Fika's documentation</a> for the networking specifics.</p>
+              <h4>Reverse proxy (optional)</h4>
+              <p>To reach the web app over HTTPS at a domain instead of <code>:8080</code> over http, put it behind a reverse proxy. <a href="https://caddyserver.com/" target="_blank" rel="noreferrer">Caddy</a> is the easiest — automatic HTTPS, one block per service. Run it on the same Docker network as the stack so it reaches services by name, and drop the web app's <code>ports:</code> (no longer needed):</p>
+              <pre>webapp.your-domain.com {
+    reverse_proxy spt-fika-webapp:5000
+}</pre>
             </div>
           </details>
         </li>
