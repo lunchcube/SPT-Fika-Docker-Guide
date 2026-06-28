@@ -161,18 +161,20 @@ docker compose version          # verify (Compose plugin ships with it)</pre>
 
         <li>
           <h3>Deploy it</h3>
-          <p>Copy the bundle to your host, unzip, and bring it up with <code>docker compose up -d</code>.</p>
+          <p>Copy the bundle to your host, unzip, and bring it up with <code>docker compose up -d --wait</code>.</p>
           <details class="more">
             <summary>Deploy &amp; manage commands</summary>
             <div class="more-body">
               <pre>unzip spt-fika-bundle-*.zip &amp;&amp; cd spt-fika-bundle-*
-docker compose up -d            # start (pulls the image on first run)
+docker compose up -d --wait     # --wait blocks until the server is healthy
 docker compose logs -f          # watch Fika / ModSync install + boot</pre>
+              <p><b>Use <code>--wait</code>.</b> The headless client and web app are gated on the server's healthcheck (<code>depends_on: service_healthy</code>), so they only start once the server is up. Without <code>--wait</code> they can be left not started.</p>
               <p>No manual folder setup needed — Docker creates your data directory on first run, and the container seeds the SPT files into it and sets ownership automatically.</p>
               <p>Day to day:</p>
-              <pre>docker compose restart                         # restart
-docker compose down                            # stop (your data dir persists)
-docker compose pull &amp;&amp; docker compose up -d    # update to a newer image tag</pre>
+              <pre>docker compose restart                                # restart
+docker compose down                                   # stop (your data dir persists)
+docker compose down &amp;&amp; docker compose up -d --wait     # apply config changes
+docker compose pull &amp;&amp; docker compose up -d --wait     # update to a newer image tag</pre>
               <p>Your data directory (set in GENERAL) holds profiles, mods and configs — back it up before changing SPT versions.</p>
             </div>
           </details>

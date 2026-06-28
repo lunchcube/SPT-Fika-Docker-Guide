@@ -55,6 +55,8 @@ const TABS = [
       help: "Reinstall the pinned Fika version on boot if already installed (preserves fika.jsonc)." },
     { key: "verboseLogs", label: "Verbose logs", type: "toggle", def: true,
       help: "Off filters high-frequency request spam (keepalive / ping / heartbeat)." },
+    { key: "healthcheck", label: "Server healthcheck", type: "toggle", def: true,
+      help: "Adds a healthcheck on the server. Headless + web app wait for it before starting (run with `docker compose up -d --wait`). Off = they start as soon as the server container does." },
     { key: "webapp", label: "Fika Web App", type: "toggle", def: false,
       help: "Adds the Fika Web App container (lacyway/fikawebapp) — a browser admin UI: accounts, item sending, profiles, headless control. Needs Fika." },
     { key: "webappApiKey", label: "Web App API key", type: "text", def: "",
@@ -128,10 +130,11 @@ function emitCompose() {
     "    volumes:",
     `      - ${s.dataDir}:/opt/server`,
   ];
-  if (s.installFika) {
+  if (s.healthcheck) {
+    const ep = s.installFika ? "/fika/presence/get" : "/launcher/ping";
     L.push(
       "    healthcheck:",
-      '      test: ["CMD-SHELL", "curl -sfk https://localhost:6969/fika/presence/get"]',
+      `      test: ["CMD-SHELL", "curl -sfk https://localhost:6969${ep}"]`,
       "      interval: 10s",
       "      timeout: 5s",
       "      retries: 30",
@@ -150,7 +153,7 @@ function emitCompose() {
       `    restart: ${s.restartPolicy}`,
       "    depends_on:",
       `      ${svc}:`,
-      "        condition: service_healthy",
+      `        condition: ${s.healthcheck ? "service_healthy" : "service_started"}`,
       "    ports:",
       '      - "25565:25565/udp"',
       "    environment:",
@@ -182,7 +185,7 @@ function emitCompose() {
       `    restart: ${s.restartPolicy}`,
       "    depends_on:",
       `      ${svc}:`,
-      "        condition: service_healthy",
+      `        condition: ${s.healthcheck ? "service_healthy" : "service_started"}`,
       "    environment:",
       '      PORT: "5000"',
       '      API_KEY: "${WEBAPP_API_KEY}"',

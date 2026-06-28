@@ -58,6 +58,14 @@ state.sptMajor = "3";
 checks([[!emitEnv().includes("USE_MODSYNC"), "ModSync suppressed on SPT 3.11"]]);
 state.sptMajor = "4";
 
+state.healthcheck = false;
+checks([
+  [!emitCompose().includes("healthcheck:"), "no healthcheck when toggled off"],
+  [emitCompose().includes("condition: service_started"), "deps gate on service_started when no healthcheck"],
+  [!emitCompose().includes("service_healthy"), "no service_healthy without a healthcheck"],
+]);
+state.healthcheck = true;
+
 checks([[!emitCompose().includes("fikawebapp"), "no web app by default"]]);
 state.webapp = true; state.webappApiKey = "abc123"; state.webappPort = 8080;
 checks([
