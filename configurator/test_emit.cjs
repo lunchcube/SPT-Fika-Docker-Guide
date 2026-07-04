@@ -79,6 +79,19 @@ state.webapp = false;
 
 state.arch = "aarch64";
 checks([[!emitCompose().includes("headless"), "headless suppressed on ARM"]]);
+
+// ARM: webapp is patched locally from lacyway's image, not pulled (amd64-only).
+state.webapp = true;
+const armWebapp = bundleFiles().find((f) => f.name === "webapp/Dockerfile");
+checks([
+  [emitCompose().includes("build: ./webapp"), "ARM webapp builds locally"],
+  [emitCompose().includes("image: spt-fika-webapp:local"), "ARM webapp tags the local build"],
+  [!emitCompose().includes("lacyway/fikawebapp:latest"), "ARM does not pull the amd64 image"],
+  [!!armWebapp, "webapp/Dockerfile shipped in the bundle on ARM"],
+  [armWebapp && armWebapp.content.includes("mcr.microsoft.com/dotnet/aspnet:10.0"), "webapp Dockerfile targets the arm64 .NET runtime base"],
+  [armWebapp && armWebapp.content.includes("FROM --platform=linux/amd64 lacyway/fikawebapp:latest"), "webapp Dockerfile sources lacyway's own image"],
+]);
+state.webapp = false;
 done();
 `;
 ctx.checks = (rows) => rows.forEach(([c, m]) => assert(c, m));
