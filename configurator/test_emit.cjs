@@ -55,8 +55,14 @@ checks([
 ]);
 
 state.sptMajor = "3";
-checks([[!emitEnv().includes("USE_MODSYNC"), "ModSync suppressed on SPT 3.11"]]);
+checks([
+  [!emitEnv().includes("USE_MODSYNC"), "ModSync suppressed on SPT 3.11"],
+  [emitCompose().includes("ghcr.io/dildz/spt-fika-server-3.11.x:"), "3.11 pulls the dedicated -3.11.x image"],
+]);
 state.sptMajor = "4";
+checks([
+  [emitCompose().includes("ghcr.io/dildz/spt-fika-server:") && !emitCompose().includes("spt-fika-server-3.11.x"), "4.0 pulls the base image"],
+]);
 
 state.healthcheck = false;
 checks([
