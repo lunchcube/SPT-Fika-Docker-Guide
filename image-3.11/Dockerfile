@@ -1,10 +1,11 @@
-# SPT 3.11 server — self-contained, build-from-source. Clean base (no Fika baked in).
-# Build-once: SPT 3.11 is frozen (last release 3.11.4). Built + booted on arm64.
+# SPT 3.11 server — build-from-source, env-driven (Fika / ModSync / mods installed
+# at boot from env vars, same contract as the 4.0 image). Build-once: 3.11 is frozen.
 #
 #   docker build -t spt-fika-server-3.11.x:3.11.4 .
 #
-# Build it natively per arch (the pkg binary is per-arch); CI does amd64 + arm64
-# on native runners. No external scripts — this file clones and builds everything.
+# Built + booted on arm64; CI builds amd64 + arm64 on native runners. No external
+# scripts — this file clones and builds SPT itself; the env-driven layer (init-server
+# + scripts) is baked in and drives everything at container start.
 
 ARG SPT_VERSION=3.11.4
 
@@ -31,9 +32,13 @@ RUN chmod +x /opt/SPT/SPT.Server.exe
 # ---------- runtime ----------
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates curl \
+        ca-certificates curl gosu jq unzip p7zip-full \
  && rm -rf /var/lib/apt/lists/*
-WORKDIR /opt/SPT
-COPY --from=build /opt/SPT /opt/SPT
+COPY --from=build --chmod=755 /opt/SPT /opt/SPT
+COPY --chmod=755 init-server.sh /usr/bin/init-server
+COPY --chmod=755 scripts/ /opt/scripts/
 EXPOSE 6969
-ENTRYPOINT ["./SPT.Server.exe"]
+# SPT serves HTTPS with a self-signed cert; /launcher/ping needs no Fika.
+HEALTHCHECK --interval=180s --timeout=10s --retries=3 --start-period=60s \
+  CMD curl -fk --header "responsecompressed:0" https://localhost:6969/launcher/ping || exit 1
+ENTRYPOINT ["/usr/bin/init-server"]
