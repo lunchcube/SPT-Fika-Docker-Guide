@@ -40,9 +40,9 @@ const TABS = [
   ]},
   { id: "mods", label: "MODS", fields: [
     { key: "useModsync", label: "Install ModSync", type: "toggle", def: false,
-      help: "Adds the Corter-ModSync server mod so clients keep their mods in sync with the server. SPT 4.0 only for now (3.11 needs Corter's original mod)." },
+      help: "Adds the ModSync server mod so clients keep their mods in sync with the server. 4.0 uses the Dildz SPT4 fork; 3.11 uses Corter's original mod." },
     { key: "modsyncVersion", label: "ModSync version", type: "text", def: "0.12.5",
-      help: "Release tag of Dildz/ModSync-for-SPT4.0." },
+      help: "Release tag — Dildz/ModSync-for-SPT4.0 (4.0) or c-orter/ModSync (3.11)." },
     { key: "modUrls", label: "Mod URLs", type: "textarea", def: "",
       help: "One archive URL per line (.zip / .7z). Each must contain user/ and/or BepInEx/ at its root." },
   ]},
@@ -177,7 +177,7 @@ function emitCompose() {
       '      PROFILE_ID: "${HEADLESS_PROFILE_ID}"',
       `      UID: "${s.puid}"`,
       `      GID: "${s.pgid}"`,
-      `      USE_MODSYNC: "${s.useModsync && s.sptMajor === "4" ? "true" : "false"}"`,
+      `      USE_MODSYNC: "${s.useModsync ? "true" : "false"}"`,
       '      AUTO_RESTART_ON_RAID_END: "false"',
       '      SAVE_LOG_ON_EXIT: "true"',
       // ponytail: wine sync left at the image default — esync was an experimental flag; the target
@@ -254,7 +254,7 @@ function emitEnv() {
     L.push(`HEADLESS_PROFILE_ID=${s.headlessProfileId}`);
     if (String(s.numHeadlessProfiles).trim() !== "") L.push(`NUM_HEADLESS_PROFILES=${s.numHeadlessProfiles}`);
   }
-  if (s.useModsync && s.sptMajor === "4") {
+  if (s.useModsync) {
     L.push("USE_MODSYNC=true");
     L.push(`MODSYNC_VERSION=${s.modsyncVersion}`);
   }
@@ -359,11 +359,9 @@ function renderFields() {
     wrap.appendChild(head);
 
     let input;
-    const modsyncField = f.key === "useModsync" || f.key === "modsyncVersion";
     const disabled = tabDisabled
       || (tab.id === "headless" && f.key !== "headlessEnabled" && !state.headlessEnabled)
       || (f.key === "modsyncVersion" && !state.useModsync)
-      || (modsyncField && state.sptMajor !== "4") // ModSync auto-install is SPT 4 only
       || ((f.key === "webappApiKey" || f.key === "webappPort") && !state.webapp);
 
     if (f.type === "toggle") {
@@ -463,8 +461,9 @@ function set(key, val, rerenderTab) {
     // SPT/Fika versions differ per major — drop the pins, set sane defaults now so
     // the fields are never stale-for-the-wrong-major, then refetch latest below.
     delete state.__pinnedSpt; delete state.__pinnedFika;
-    state.sptVersion  = val === "3" ? "3.11.4" : "4.0.13";
-    state.fikaVersion = val === "3" ? "2.4.8"  : "2.3.2";
+    state.sptVersion     = val === "3" ? "3.11.4" : "4.0.13";
+    state.fikaVersion    = val === "3" ? "2.4.8"  : "2.3.2";
+    state.modsyncVersion = val === "3" ? "0.11.1" : "0.12.5";
   }
   saveState();
   if (rerenderTab) render();

@@ -56,7 +56,7 @@ checks([
 
 state.sptMajor = "3";
 checks([
-  [!emitEnv().includes("USE_MODSYNC"), "ModSync suppressed on SPT 3.11"],
+  [emitEnv().includes("USE_MODSYNC=true"), "ModSync now works on SPT 3.11 (Corter original)"],
   [emitCompose().includes("ghcr.io/dildz/spt-fika-server-3.11.x:"), "3.11 pulls the dedicated -3.11.x image"],
 ]);
 state.sptMajor = "4";
