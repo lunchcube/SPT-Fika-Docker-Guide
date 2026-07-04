@@ -82,7 +82,14 @@ for (const t of TABS) for (const f of t.fields) FIELDS[f.key] = f;
 const STORE_KEY = "spt-fika-configurator";
 let state = loadState();
 let activeTab = "general";
-let previewMode = "compose"; // "compose" | "env"
+let previewMode = "compose"; // "compose" | "env" | "dockerfile"
+
+// Preview tabs. dockerfile only exists on ARM + Fika Web App (see renderPreview).
+const PREVIEWS = {
+  compose:    { name: "docker-compose.yml", emit: emitCompose },
+  env:        { name: ".env",               emit: emitEnv },
+  dockerfile: { name: "webapp/Dockerfile",  emit: emitWebappDockerfile },
+};
 
 function loadState() {
   const s = {};
@@ -406,10 +413,18 @@ function renderFields() {
 }
 
 function renderPreview() {
-  $("preview-name").textContent = previewMode === "compose" ? "docker-compose.yml" : ".env";
+  const armWebapp = state.webapp && state.arch === "aarch64";
+  // The Dockerfile tab only ships on ARM + webapp — if that combo just went away
+  // while it was selected, fall back to compose so we don't render a stale file.
+  if (previewMode === "dockerfile" && !armWebapp) previewMode = "compose";
+  $("btn-webapp").hidden = !armWebapp;
+
+  const view = PREVIEWS[previewMode];
+  $("preview-name").textContent = view.name;
   $("btn-yaml").classList.toggle("active", previewMode === "compose");
   $("btn-env").classList.toggle("active", previewMode === "env");
-  const text = previewMode === "compose" ? emitCompose() : emitEnv();
+  $("btn-webapp").classList.toggle("active", previewMode === "dockerfile");
+  const text = view.emit();
   const code = $("code");
   code.innerHTML = "";
   text.replace(/\n$/, "").split("\n").forEach((line, i) => {
@@ -455,8 +470,9 @@ function init() {
   }
   $("btn-yaml").onclick = () => { previewMode = "compose"; renderPreview(); };
   $("btn-env").onclick = () => { previewMode = "env"; renderPreview(); };
+  $("btn-webapp").onclick = () => { previewMode = "dockerfile"; renderPreview(); };
   $("copy").onclick = async () => {
-    const text = previewMode === "compose" ? emitCompose() : emitEnv();
+    const text = PREVIEWS[previewMode].emit();
     try { await navigator.clipboard.writeText(text); flash($("copy"), "Copied"); } catch {}
   };
   $("download").onclick = () => {
