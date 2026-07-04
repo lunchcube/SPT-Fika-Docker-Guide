@@ -68,8 +68,12 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 RUN git clone --depth 1 --branch "$SPT_VERSION" \
         https://github.com/sp-tarkov/server.git /tmp/spt
 WORKDIR /tmp/spt/project
-RUN git lfs pull \
- && npm ci \
+RUN git lfs pull
+# SPT 3.11's project ships NO package-lock.json → npm install, not `npm ci`.
+# The setEncoding strip is the 2024 guide's known workaround for the pkg build
+# (harmless no-op if the line isn't present).
+RUN sed -i '/setEncoding/d' src/Program.ts || true
+RUN npm install \
  && npm run build:release \
  && mv build /app/publish        # emits SPT.Server.exe (pkg-bundled Node binary)
 
