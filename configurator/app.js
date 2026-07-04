@@ -144,7 +144,9 @@ function emitCompose() {
     `      - ${s.dataDir}:/opt/server`,
   ];
   if (s.healthcheck) {
-    const ep = s.installFika ? "/fika/presence/get" : "/launcher/ping";
+    // 4.0 + Fika → the Fika presence endpoint; otherwise (incl. all of 3.11, whose
+    // old Node Fika may not expose it) the vanilla SPT /launcher/ping, always present.
+    const ep = (s.installFika && s.sptMajor !== "3") ? "/fika/presence/get" : "/launcher/ping";
     L.push(
       "    healthcheck:",
       `      test: ["CMD-SHELL", "curl -sfk https://localhost:6969${ep}"]`,
