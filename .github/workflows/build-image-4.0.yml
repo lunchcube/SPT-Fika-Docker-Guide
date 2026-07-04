@@ -1,4 +1,4 @@
-name: Build & publish image
+name: Build & publish 4.0 image
 
 # Builds the SPT 4.0 server image from source for amd64 AND arm64 — each on a
 # NATIVE runner (no QEMU) — and publishes one multi-arch tag to GHCR. This is the
