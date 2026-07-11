@@ -15,13 +15,22 @@ Updating SPT means building (or pulling) a new image tag.
 
 | Arg | Default | Meaning |
 |---|---|---|
-| `SPT_MAJOR` | `4` | `4` = C#/.NET build (live). `3` = 3.11 Node build (present, unverified). |
+| `SPT_MAJOR` | `4` | `4` = C#/.NET build (live). `3` = 3.11 Node build (verified · frozen — see note below). |
 | `SPT_VERSION` | `4.0.13` | A valid tag/branch of the matching `sp-tarkov` repo (`server-csharp` for 4.x, `server` for 3.11.x). |
 
 ```
 docker build image/ -t spt-fika-server:4.0.13 \
     --build-arg SPT_MAJOR=4 --build-arg SPT_VERSION=4.0.13
 ```
+
+> **SPT 3.11 is a frozen image.** It's built once from `image-3.11/` (published as
+> `ghcr.io/dildz/spt-fika-server-3.11.x:3.11.4`), not from `image/`. SPT, Fika and ModSync are
+> pinned and there are **no auto-updates** — the `AUTO_UPDATE_FIKA` / `AUTO_UPDATE_MODSYNC` knobs
+> below are 4.0-only and do nothing on 3.11 (its installers are install-once-then-skip). Two other
+> differences from 4.0: `USE_MODSYNC` **works on 3.11**, installing Corter's original
+> [`c-orter/ModSync`](https://github.com/c-orter/ModSync) (`MODSYNC_VERSION` default `0.11.1`); and
+> 3.11 uses a **flat game-root layout** (server runs from the mount root, no `SPT/` subdir), so mods
+> and ModSync's client files extract straight into the mount.
 
 ## Runtime — core (live)
 
@@ -63,7 +72,7 @@ server mod (the SPT 4.0 fork) so clients keep their mods in sync with the server
 
 | Var | Default | Meaning |
 |---|---|---|
-| `USE_MODSYNC` | `false` | Install the ModSync server mod. Off by default (opt-in). **SPT 4 only** — ignored (with a logged skip) when `SPT_MAJOR=3`, since 3.11 needs Corter's original mod and a different layout. |
+| `USE_MODSYNC` | `false` | Install the ModSync server mod. Off by default (opt-in). This table covers the **4.0** image (Dildz's SPT4.0 fork); it's ignored (with a logged skip) if you set `SPT_MAJOR=3` here. The separate **3.11 image** has its own `USE_MODSYNC` that installs Corter's original mod — see the frozen-image note above. |
 | `MODSYNC_VERSION` | `0.12.5` | Release tag (without the `v`) of `Dildz/ModSync-for-SPT4.0` to install. |
 | `AUTO_UPDATE_MODSYNC` | `false` | Reinstall the pinned version on boot if already present, preserving your `config.jsonc`. |
 | `MODSYNC_URL` | _(derived)_ | Override the release-zip URL (e.g. a self-hosted mirror, or `file://` for testing). Normally leave unset. |
