@@ -49,12 +49,16 @@ state.useModsync = true; state.modsyncVersion = "0.12.5";
 checks([
   [emitEnv().includes("USE_MODSYNC=true"), "USE_MODSYNC emitted"],
   [emitEnv().includes("MODSYNC_VERSION=0.12.5"), "MODSYNC_VERSION emitted"],
+  [emitEnv().includes("AUTO_UPDATE_MODSYNC="), "AUTO_UPDATE_MODSYNC emitted on 4.0 ModSync"],
+  [emitEnv().includes("FIKA_HEADLESS_VERSION=1.4.14"), "FIKA_HEADLESS_VERSION emitted when headless + ModSync"],
 ]);
 
 state.sptMajor = "3";
 checks([
   [emitEnv().includes("USE_MODSYNC=true"), "ModSync now works on SPT 3.11 (Corter original)"],
   [emitCompose().includes("ghcr.io/dildz/spt-fika-server-3.11.x:"), "3.11 pulls the dedicated -3.11.x image"],
+  [!emitEnv().includes("AUTO_UPDATE_MODSYNC"), "no AUTO_UPDATE_MODSYNC on frozen 3.11"],
+  [!emitEnv().includes("FIKA_HEADLESS_VERSION"), "no FIKA_HEADLESS_VERSION on frozen 3.11"],
 ]);
 state.quma = true; state.qumaAdminPassword = "supersecret";
 checks([

@@ -49,12 +49,17 @@ Read by `init-server.sh` on every boot.
 ## Runtime — Fika (Phase 2)
 
 Read by `scripts/install_fika.sh`. Runs each boot; safe on an already-set-up mount.
+Installs up to three parts: the **server mod** (always), and — when `USE_MODSYNC=true`,
+so ModSync serves them from the game-root `BepInEx/plugins/Fika/` — the **client plugin**
+(for players + headless) and, when a headless is in play, the **headless DLL** (headless
+only; ModSync's `config.jsonc` excludes it from players).
 
 | Var | Default | Meaning |
 |---|---|---|
-| `INSTALL_FIKA` | `true` | Install the Fika server mod into `user/mods/fika-server` if absent. `false` skips entirely. |
-| `FIKA_VERSION` | `2.3.2` | Release tag of [`project-fika/Fika-Server-CSharp`](https://github.com/project-fika/Fika-Server-CSharp/releases) to install. |
-| `AUTO_UPDATE_FIKA` | `false` | If Fika is already installed and this is `true`, reinstall `FIKA_VERSION` in place, preserving `fika.jsonc`. If `false`, an existing install is left untouched. |
+| `INSTALL_FIKA` | `true` | Install the Fika server mod into `user/mods/fika-server` if absent. `false` skips entirely (client/headless plugins too). |
+| `FIKA_VERSION` | `2.3.2` | Release tag of [`project-fika/Fika-Server-CSharp`](https://github.com/project-fika/Fika-Server-CSharp/releases) — drives **both** the server mod and (with ModSync) the [`Fika-Plugin`](https://github.com/project-fika/Fika-Plugin/releases) client plugin, same tag. |
+| `FIKA_HEADLESS_VERSION` | _(unset)_ | Release tag of [`project-fika/Fika-Headless`](https://github.com/project-fika/Fika-Headless/releases) (own `1.4.x` scheme). Set only when running a headless **and** ModSync; stages `Fika.Headless.dll` for the headless to sync. Unset = not staged. |
+| `AUTO_UPDATE_FIKA` | `false` | If `true`, reinstall the pinned versions in place on boot — server mod (preserving `fika.jsonc`) **and** the client + headless plugins if staged. If `false`, existing installs are left untouched. |
 | `NUM_HEADLESS_PROFILES` | _(unset)_ | If set, writes `headless.profiles.amount` in `fika.jsonc`. Leave unset for a non-headless server. |
 
 ## Runtime — ModSync (Phase 2)

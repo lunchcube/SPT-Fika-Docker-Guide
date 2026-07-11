@@ -37,6 +37,8 @@ const TABS = [
       help: "The server generates this on first boot — grab it from the logs, then set HEADLESS_PROFILE_ID in .env. Leave blank for now." },
     { key: "headlessTag", label: "Headless image tag", type: "text", def: "latest",
       help: "Tag of ghcr.io/zhliau/fika-headless-docker." },
+    { key: "fikaHeadlessVersion", label: "Fika headless version", type: "text", def: "1.4.14",
+      help: "Fika-Headless plugin release (project-fika/Fika-Headless). With ModSync on, the server stages Fika.Headless.dll so the headless syncs it. Own version scheme (1.4.x), separate from Fika." },
   ]},
   { id: "mods", label: "QoL", fields: [
     { key: "useModsync", label: "Install ModSync", type: "toggle", def: false,
@@ -56,7 +58,9 @@ const TABS = [
                 ["on-failure", "on-failure"], ["no", "no"]],
       help: "Docker restart policy for the service." },
     { key: "autoUpdateFika", label: "Auto-update Fika", type: "toggle", def: false,
-      help: "Reinstall the pinned Fika version on boot if already installed (preserves fika.jsonc)." },
+      help: "Reinstall the pinned Fika version on boot if already installed (preserves fika.jsonc). Also re-stages the client + headless plugins when ModSync serves them." },
+    { key: "autoUpdateModsync", label: "Auto-update ModSync", type: "toggle", def: false,
+      help: "Reinstall the pinned ModSync version on boot if already installed (preserves config.jsonc)." },
     { key: "verboseLogs", label: "Verbose logs", type: "toggle", def: true,
       help: "Off filters high-frequency request spam (keepalive / ping / heartbeat)." },
     { key: "healthcheck", label: "Server healthcheck", type: "toggle", def: true,
@@ -302,6 +306,10 @@ function emitEnv() {
   if (s.useModsync) {
     L.push("USE_MODSYNC=true");
     L.push(`MODSYNC_VERSION=${s.modsyncVersion}`);
+    if (s.sptMajor !== "3") L.push(`AUTO_UPDATE_MODSYNC=${s.autoUpdateModsync}`);   // 3.11 is frozen — no auto-update
+    // Headless plugin is staged into ModSync's folder only when a headless is also in
+    // play; the client/headless staging is a 4.0 feature (3.11's installer is frozen).
+    if (headlessOn() && s.sptMajor !== "3") L.push(`FIKA_HEADLESS_VERSION=${s.fikaHeadlessVersion}`);
   }
   if (s.webapp) L.push(`WEBAPP_API_KEY=${s.webappApiKey}`);
   if (s.quma && s.sptMajor !== "3") L.push(`QUMA_ADMIN_PASSWORD=${s.qumaAdminPassword}`);   // quma is 4.0-only
@@ -406,7 +414,9 @@ function renderFields() {
     const disabled = tabDisabled
       || (tab.id === "headless" && f.key !== "headlessEnabled" && !state.headlessEnabled)
       || (f.key === "modsyncVersion" && !state.useModsync)
+      || (f.key === "fikaHeadlessVersion" && (!state.useModsync || state.sptMajor === "3"))   // headless staging: ModSync-served, 4.0-only
       || (f.key === "autoUpdateFika" && state.sptMajor === "3")   // 3.11 is frozen — no auto-update
+      || (f.key === "autoUpdateModsync" && (!state.useModsync || state.sptMajor === "3"))
       || ((f.key === "webappApiKey" || f.key === "webappPort") && !state.webapp)
       || ((f.key === "quma" || f.key === "qumaPort" || f.key === "qumaAdminPassword") && state.sptMajor === "3")   // quma is 4.0-only
       || ((f.key === "qumaAdminPassword" || f.key === "qumaPort") && !state.quma);
