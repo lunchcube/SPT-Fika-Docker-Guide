@@ -241,7 +241,6 @@ function emitEnv() {
     `SPT_VERSION=${s.sptVersion}`,
     `INSTALL_FIKA=${s.installFika}`,
     `FIKA_VERSION=${s.fikaVersion}`,
-    `AUTO_UPDATE_FIKA=${s.autoUpdateFika}`,
     `LISTEN_ALL_NETWORKS=${s.listenAll}`,
     `VERBOSE_LOGS=${s.verboseLogs}`,
     `PUID=${s.puid}`,
@@ -249,6 +248,8 @@ function emitEnv() {
     `USER_NAME=${s.userName}`,
     `GROUP_NAME=${s.groupName}`,
   ];
+  // 3.11 is frozen — no auto-update. Only 4.0 (the living branch) emits it.
+  if (s.sptMajor !== "3") L.push(`AUTO_UPDATE_FIKA=${s.autoUpdateFika}`);
   if (headlessOn()) {
     L.push(`HEADLESS_TAG=${s.headlessTag}`);
     L.push(`HEADLESS_PROFILE_ID=${s.headlessProfileId}`);
@@ -362,6 +363,7 @@ function renderFields() {
     const disabled = tabDisabled
       || (tab.id === "headless" && f.key !== "headlessEnabled" && !state.headlessEnabled)
       || (f.key === "modsyncVersion" && !state.useModsync)
+      || (f.key === "autoUpdateFika" && state.sptMajor === "3")   // 3.11 is frozen — no auto-update
       || ((f.key === "webappApiKey" || f.key === "webappPort") && !state.webapp);
 
     if (f.type === "toggle") {
@@ -464,6 +466,7 @@ function set(key, val, rerenderTab) {
     state.sptVersion     = val === "3" ? "3.11.4" : "4.0.13";
     state.fikaVersion    = val === "3" ? "2.4.8"  : "2.3.2";
     state.modsyncVersion = val === "3" ? "0.11.1" : "0.12.5";
+    if (val === "3") state.autoUpdateFika = false;   // 3.11 is frozen — no auto-update
   }
   saveState();
   if (rerenderTab) render();
