@@ -98,6 +98,23 @@ checks([
   [armWebapp && armWebapp.content.includes("FROM --platform=linux/amd64 lacyway/fikawebapp:latest"), "webapp Dockerfile sources lacyway's own image"],
 ]);
 state.webapp = false;
+
+// Quartermaster (quma) optional service.
+state.arch = "x86_64";
+checks([[!emitCompose().includes("-quma:"), "no quma service by default"]]);
+state.quma = true; state.qumaAdminPassword = "supersecret"; state.qumaPort = 9190;
+checks([
+  [emitCompose().includes("ghcr.io/dildz/quma:latest"), "quma image emitted"],
+  [emitCompose().includes("spt-fika-quma:"), "quma service named off the server name"],
+  [emitCompose().includes('"9190:9190"'), "quma port mapped"],
+  [emitCompose().includes("/var/run/docker.sock:/var/run/docker.sock"), "quma mounts the docker socket"],
+  [emitCompose().includes("QUMA_SERVER_CONTAINER: spt-fika"), "quma points at the server container"],
+  [emitEnv().includes("QUMA_ADMIN_PASSWORD=supersecret"), "QUMA_ADMIN_PASSWORD emitted to .env"],
+  [!validate().qumaAdminPassword, "quma password valid at 8+ chars"],
+]);
+state.qumaAdminPassword = "short";
+checks([[!!validate().qumaAdminPassword, "quma rejects a <8 char password"]]);
+state.quma = false;
 done();
 `;
 ctx.checks = (rows) => rows.forEach(([c, m]) => assert(c, m));
