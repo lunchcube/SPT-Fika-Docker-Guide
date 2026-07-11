@@ -89,12 +89,27 @@ FROM build-v${SPT_MAJOR} AS build-selected
 
 FROM mcr.microsoft.com/dotnet/aspnet:9.0-noble AS final
 ARG SPT_MAJOR
+# Full SPT release build id (<ver>-<build>-<hash>) for the client-scaffold download.
+# This is a DIFFERENT identifier from SPT_VERSION (the git tag the server is built from),
+# so it's a separate pin — bump both together on an SPT update.
+ARG SPT_RELEASE=4.0.13-40087-2891fd4
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl gosu jq unzip p7zip-full \
  && rm -rf /var/lib/apt/lists/*
 
-COPY --from=build-selected --chmod=755 /app/publish /opt/SPT
+# Game-root baseline. The from-source build only emits the managed server; the client
+# scaffold (BepInEx / doorstop / winhttp) ships ONLY in the SPT release, so fetch the
+# release and keep everything EXCEPT its own server dir, then drop the arch-native
+# from-source server into SPT/. init-server seeds this whole tree into the mount, giving
+# a complete SPT 4 install. (SPT 4 only; the 3.11 flat layout is built from image-3.11/.)
+RUN if [ "${SPT_MAJOR}" = "4" ]; then \
+        curl -fsSL "https://spt-releases.modd.in/SPT-${SPT_RELEASE}.7z" -o /tmp/spt.7z \
+     && 7z x /tmp/spt.7z -o/opt/gameroot >/dev/null \
+     && rm -rf /opt/gameroot/SPT /tmp/spt.7z ; \
+    else mkdir -p /opt/gameroot ; fi
+
+COPY --from=build-selected --chmod=755 /app/publish /opt/gameroot/SPT
 
 COPY --chmod=755 init-server.sh /usr/bin/init-server
 COPY --chmod=755 scripts/ /opt/scripts/

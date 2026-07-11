@@ -17,13 +17,14 @@ LISTEN_ALL_NETWORKS="${LISTEN_ALL_NETWORKS:-false}"
 
 # ---- paths ----
 # The bind mount is the GAME ROOT (matches a real SPT 4 + Fika install): the SPT server
-# lives in the SPT/ subdir and runs from there, while client-facing files that ModSync
-# serves to clients (BepInEx/, EscapeFromTarkov_Data/, ModSync.Updater.exe) sit one level
-# up at the game root. The server's "../BepInEx" etc. therefore resolve INSIDE the mount,
-# so they persist and land exactly where ModSync expects them.
-IMAGE_SRC=/opt/SPT      # server compiled into the image (read-only baseline)
-SERVER=/opt/server      # host bind mount — the game root (persistent)
-SPT_DIR="$SERVER/SPT"   # the SPT server install; the server runs from here
+# lives in the SPT/ subdir and runs from there, while the client-facing scaffold
+# (BepInEx/, doorstop_config.ini, winhttp.dll) sits at the game root. Both are seeded on
+# first boot from the image baseline — the SPT release scaffold with the from-source
+# server dropped into SPT/ — so the mount ends up a complete SPT 4 install. The server's
+# "../BepInEx" etc. resolve INSIDE the mount, where ModSync serves its client files from.
+IMAGE_SRC=/opt/gameroot   # full game-root baseline built into the image (scaffold + SPT/)
+SERVER=/opt/server        # host bind mount — the game root (persistent)
+SPT_DIR="$SERVER/SPT"     # the SPT server install; the server runs from here
 
 orange="\033[38;5;208m"; reset="\033[0m"
 
@@ -41,16 +42,17 @@ setup_user_and_group() {
     USER_NAME="$(getent passwd "$PUID" | cut -d: -f1)"
 }
 
-# First boot: copy the image-built server into the (empty) bind mount, so server
-# files persist on the host. Re-seeding / version updates are Phase 2.
+# First boot: copy the image-built game root (client scaffold + SPT/ server) into the
+# (empty) bind mount, so the whole install persists on the host. Re-seeding / version
+# updates are Phase 2.
 seed_server() {
     if [ -z "$(ls -A "$SERVER" 2>/dev/null)" ]; then
         echo -e "${orange}Note: $SERVER is empty — bind-mount a host dir here to persist server files.${reset}"
     fi
     if [ ! -e "$SPT_DIR/SPT.Server.dll" ] && [ ! -e "$SPT_DIR/SPT.Server.exe" ]; then
-        echo "First boot — seeding server files into $SPT_DIR"
-        mkdir -p "$SPT_DIR"
-        cp -a "$IMAGE_SRC/." "$SPT_DIR/"
+        echo "First boot — seeding full game-root install into $SERVER"
+        mkdir -p "$SERVER"
+        cp -a "$IMAGE_SRC/." "$SERVER/"
     else
         echo "Existing server files found in $SPT_DIR (version updates handled in Phase 2)"
     fi
