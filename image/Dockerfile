@@ -103,10 +103,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # release and keep everything EXCEPT its own server dir, then drop the arch-native
 # from-source server into SPT/. init-server seeds this whole tree into the mount, giving
 # a complete SPT 4 install. (SPT 4 only; the 3.11 flat layout is built from image-3.11/.)
+#
+# Trim SPT-client-only bits from BepInEx — never needed for ModSync client staging
+# (matches the live update-server.sh backup excludes): the SPT client plugins/patcher
+# and the regenerated BepInEx configs. The doorstop bootstrap (winhttp.dll,
+# doorstop_config.ini, .doorstop_version, licenses) is kept.
 RUN if [ "${SPT_MAJOR}" = "4" ]; then \
         curl -fsSL "https://spt-releases.modd.in/SPT-${SPT_RELEASE}.7z" -o /tmp/spt.7z \
      && 7z x /tmp/spt.7z -o/opt/gameroot >/dev/null \
-     && rm -rf /opt/gameroot/SPT /tmp/spt.7z ; \
+     && rm -rf /opt/gameroot/SPT /tmp/spt.7z \
+     && rm -rf /opt/gameroot/BepInEx/core \
+               /opt/gameroot/BepInEx/plugins/spt \
+               /opt/gameroot/BepInEx/patchers/spt-prepatch.dll \
+               /opt/gameroot/BepInEx/config/BepInEx.cfg \
+               /opt/gameroot/BepInEx/config/com.bepis.bepinex.configurationmanager.cfg ; \
     else mkdir -p /opt/gameroot ; fi
 
 COPY --from=build-selected --chmod=755 /app/publish /opt/gameroot/SPT

@@ -14,6 +14,7 @@ GROUP_NAME="${GROUP_NAME:-spt}"
 SPT_MAJOR="${SPT_MAJOR:-4}"
 VERBOSE_LOGS="${VERBOSE_LOGS:-true}"
 LISTEN_ALL_NETWORKS="${LISTEN_ALL_NETWORKS:-false}"
+USE_MODSYNC="${USE_MODSYNC:-false}"
 
 # ---- paths ----
 # The bind mount is the GAME ROOT (matches a real SPT 4 + Fika install): the SPT server
@@ -60,6 +61,22 @@ seed_server() {
     chown -R "$PUID:$PGID" "$SERVER"
 }
 
+# The game-root client scaffold (BepInEx/) only matters when ModSync serves it to
+# clients, so gate it on USE_MODSYNC each boot: without ModSync it has no purpose →
+# remove it; with ModSync keep it and ensure an EMPTY EscapeFromTarkov_Data/ exists
+# (Dynamic Maps stages client files there). The doorstop bootstrap (winhttp.dll,
+# doorstop_config.ini, .doorstop_version, licenses) always stays either way.
+gate_modsync_scaffold() {
+    if [ "$USE_MODSYNC" = "true" ]; then
+        mkdir -p "$SERVER/BepInEx" "$SERVER/EscapeFromTarkov_Data"
+        chown -R "$PUID:$PGID" "$SERVER/BepInEx" "$SERVER/EscapeFromTarkov_Data"
+        echo "ModSync scaffold ready (BepInEx/ + empty EscapeFromTarkov_Data/ at game root)"
+    else
+        rm -rf "$SERVER/BepInEx" "$SERVER/EscapeFromTarkov_Data"
+        echo "ModSync off — removed game-root BepInEx/ (client scaffold not needed)"
+    fi
+}
+
 # Make the server bind to all interfaces (needed for LAN / Fika clients).
 listen_all_networks() {
     local http="$SPT_DIR/SPT_Data/configs/http.json"
@@ -104,6 +121,7 @@ run_server() {
 banner
 setup_user_and_group
 seed_server
+gate_modsync_scaffold
 listen_all_networks
 run_installers
 run_server
