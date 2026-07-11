@@ -44,7 +44,7 @@ const TABS = [
     { key: "modsyncVersion", label: "ModSync version", type: "text", def: "0.12.5",
       help: "Release tag — Dildz/ModSync-for-SPT4.0 (4.0) or c-orter/ModSync (3.11)." },
     { key: "quma", label: "Install Quartermaster", type: "toggle", def: false,
-      help: "Adds Quartermaster (quma) — a web dashboard to install/update/remove server mods from SPT Forge. Talks to the Docker socket to restart the server. Reach it at /quma behind your reverse proxy." },
+      help: "Adds Quartermaster (quma) — an advanced server web UI for admins and players. Installs/updates/removes server mods from SPT Forge and talks to the Docker socket to restart the server. Reach it directly on the public IP or behind your reverse proxy. See the field guide for features." },
     { key: "qumaPort", label: "Quartermaster port", type: "number", def: 9190, min: 1, max: 65535,
       help: "Host port for the quma dashboard over http. Put it behind your reverse proxy for HTTPS." },
     { key: "qumaAdminPassword", label: "Quartermaster admin password", type: "text", def: "",
@@ -205,7 +205,7 @@ function emitCompose() {
       : ["    image: lacyway/fikawebapp:latest"];
     L.push(
       "",
-      "  # Fika Web App — server admin UI. Generate the API key on the server, then set WEBAPP_API_KEY in .env.",
+      "  # Fika Web App — basic server admin UI. Generate the API key on the server, then set WEBAPP_API_KEY in .env.",
       "  # Default login: admin / Admin123!  (change it immediately). Put it behind a reverse proxy for HTTPS.",
       `  ${svc}-webapp:`,
       ...webappImage,
@@ -237,8 +237,8 @@ function emitCompose() {
     // group_add needed). Self-bootstraps on first boot from .env.
     L.push(
       "",
-      "  # Quartermaster (quma) — web UI to install/update/remove server mods from SPT Forge.",
-      "  # Reach it at /quma behind your reverse proxy. Admin password comes from .env (QUMA_ADMIN_PASSWORD).",
+      "  # Quartermaster (quma) — advanced server web UI for admins and players. See the field guide for features.",
+      "  # Reach it directly on the public IP or put it behind a reverse proxy. Admin password comes from .env (QUMA_ADMIN_PASSWORD).",
       `  ${svc}-quma:`,
       "    image: ghcr.io/dildz/quma:latest",
       `    container_name: ${svc}-quma`,
