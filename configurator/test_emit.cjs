@@ -115,6 +115,38 @@ checks([
 state.qumaAdminPassword = "short";
 checks([[!!validate().qumaAdminPassword, "quma rejects a <8 char password"]]);
 state.quma = false;
+
+// Fika off: healthcheck falls back to /launcher/ping and INSTALL_FIKA=false.
+state.sptMajor = "4"; state.healthcheck = true; state.installFika = false;
+checks([
+  [emitEnv().includes("INSTALL_FIKA=false"), "INSTALL_FIKA=false emitted"],
+  [emitCompose().includes("/launcher/ping"), "healthcheck falls back to /launcher/ping without Fika"],
+  [!emitCompose().includes("/fika/presence/get"), "no Fika presence check without Fika"],
+]);
+state.installFika = true;
+checks([[emitCompose().includes("/fika/presence/get"), "Fika presence check restored with Fika on 4.0"]]);
+
+// autoUpdateFika: emitted on 4.0 (living), omitted on frozen 3.11.
+state.sptMajor = "4"; state.autoUpdateFika = true;
+checks([[emitEnv().includes("AUTO_UPDATE_FIKA=true"), "AUTO_UPDATE_FIKA emitted on 4.0"]]);
+state.sptMajor = "3";
+checks([[!emitEnv().includes("AUTO_UPDATE_FIKA"), "AUTO_UPDATE_FIKA omitted on frozen 3.11"]]);
+state.sptMajor = "4"; state.autoUpdateFika = false;
+
+// listenAll -> LISTEN_ALL_NETWORKS passthrough (both states).
+state.listenAll = true;
+checks([[emitEnv().includes("LISTEN_ALL_NETWORKS=true"), "LISTEN_ALL_NETWORKS=true emitted"]]);
+state.listenAll = false;
+checks([[emitEnv().includes("LISTEN_ALL_NETWORKS=false"), "LISTEN_ALL_NETWORKS=false emitted"]]);
+
+// Validation surface: name regex + number range.
+state.userName = "bad name!";
+checks([[!!validate().userName, "invalid userName rejected by regex"]]);
+state.userName = "spt";
+state.puid = 99999999;
+checks([[!!validate().puid, "out-of-range PUID rejected"]]);
+state.puid = 1000;
+checks([[Object.keys(validate()).length === 0, "clean state has no validation errors"]]);
 done();
 `;
 ctx.checks = (rows) => rows.forEach(([c, m]) => assert(c, m));
