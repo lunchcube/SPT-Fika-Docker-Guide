@@ -1,5 +1,5 @@
 // Offline check for the emitters: loads app.js in a tiny DOM shim and asserts
-// the non-obvious logic (arch-gated headless, MOD_URLS join, required keys).
+// the non-obvious logic (arch-gated headless, required keys, quma/modsync emit).
 // Run: node test_emit.cjs   (no docker, no browser needed)
 const fs = require("fs");
 const path = require("path");
@@ -43,9 +43,6 @@ checks([
   [emitEnv().includes("HEADLESS_TAG=latest"), "HEADLESS_TAG emitted"],
   [emitEnv().includes("HEADLESS_PROFILE_ID="), "HEADLESS_PROFILE_ID emitted"],
 ]);
-
-state.modUrls = "https://x/a.zip\\n  https://x/b.7z";
-checks([[emitEnv().includes('MOD_URLS="https://x/a.zip https://x/b.7z"'), "MOD_URLS joined"]]);
 
 checks([[!emitEnv().includes("USE_MODSYNC"), "no ModSync vars when off"]]);
 state.useModsync = true; state.modsyncVersion = "0.12.5";
@@ -110,6 +107,8 @@ checks([
   [emitCompose().includes("/var/run/docker.sock:/var/run/docker.sock"), "quma mounts the docker socket"],
   [emitCompose().includes("QUMA_SERVER_CONTAINER: spt-fika"), "quma points at the server container"],
   [emitEnv().includes("QUMA_ADMIN_PASSWORD=supersecret"), "QUMA_ADMIN_PASSWORD emitted to .env"],
+  [emitCompose().includes("QUMA_SPT_DIR: /opt/server"), "quma reads the data dir at /opt/server"],
+  [emitCompose().includes("- ./server-data:/opt/server"), "quma mounts the data dir (any path style) at /opt/server"],
   [!validate().qumaAdminPassword, "quma password valid at 8+ chars"],
 ]);
 state.qumaAdminPassword = "short";
