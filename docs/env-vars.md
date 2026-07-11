@@ -57,14 +57,6 @@ Read by `scripts/install_fika.sh`. Runs each boot; safe on an already-set-up mou
 | `AUTO_UPDATE_FIKA` | `false` | If Fika is already installed and this is `true`, reinstall `FIKA_VERSION` in place, preserving `fika.jsonc`. If `false`, an existing install is left untouched. |
 | `NUM_HEADLESS_PROFILES` | _(unset)_ | If set, writes `headless.profiles.amount` in `fika.jsonc`. Leave unset for a non-headless server. |
 
-## Runtime — extra mods (Phase 2)
-
-Read by `scripts/install_mods.sh`.
-
-| Var | Default | Meaning |
-|---|---|---|
-| `MOD_URLS` | _(empty)_ | Whitespace/newline-separated archive URLs. Each is downloaded once (tracked in `.installed_mod_urls`), extracted, and split into the game-root layout: a `user/` tree → `SPT/user/` (server mods), a `BepInEx/` tree → the game-root `BepInEx/` (client mods — where ModSync serves them). Empty = no extra mods. Supports `.zip` and `.7z`; archives must carry `user/` and/or `BepInEx/` at their root. |
-
 ## Runtime — ModSync (Phase 2)
 
 Read by `scripts/install_modsync.sh`. Installs the [Corter-ModSync](https://github.com/Dildz/ModSync-for-SPT4.0)
@@ -82,8 +74,7 @@ from its `SPT/` subdir, so the ModSync server mod's required `../ModSync.Updater
 `../BepInEx/plugins/...` resolve at the game root — i.e. **inside the mount**, persistent. The
 script puts the server mod in `SPT/user/mods/Corter-ModSync` (where your `config.jsonc` persists)
 and the client files (BepInEx + updater) at the game root, merging into `BepInEx/` so your own
-client mods stay. Client mods you add via `MOD_URLS` land in the same game-root `BepInEx/`, exactly
-where ModSync serves them to clients.
+client mods stay — that game-root `BepInEx/` is exactly where ModSync serves them to clients.
 
 ## Not env vars — handled elsewhere
 

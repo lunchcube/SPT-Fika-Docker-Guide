@@ -23,7 +23,7 @@ Two pieces that work together:
 | **SPT 4.0 server** | Compiled from [`sp-tarkov/server-csharp`](https://github.com/sp-tarkov/server-csharp) at build time → native binary per architecture. |
 | **Fika co-op** | The [Fika server mod](https://github.com/project-fika/Fika-Server-CSharp) installs on first boot (`INSTALL_FIKA=true`). |
 | **ModSync** | Optional — installs [Dildz/ModSync-for-SPT4.0](https://github.com/Dildz/ModSync-for-SPT4.0) so clients auto-sync your server's mods (`USE_MODSYNC=true`). |
-| **Extra mods** | Drop a list of archive URLs in `MOD_URLS` — downloaded and installed on boot. |
+| **Quartermaster** | Optional web UI (`quma`) to install / update / remove server mods from SPT Forge. |
 | **Headless client** | Optional dedicated raid host (x86 only — runs a real SPT client). |
 | **Fika web app** | Optional browser admin UI ([`lacyway/fikawebapp`](https://hub.docker.com/r/lacyway/fikawebapp)). |
 | **Sensible defaults** | Runs as your `PUID`/`PGID`, owns its data dir cleanly (no root-owned files), self-signed HTTPS, healthcheck. |
@@ -83,7 +83,6 @@ Everything is environment-driven. The full, authoritative list is in **[docs/env
 | `INSTALL_FIKA` | `true` | Install the Fika server mod on first boot. |
 | `FIKA_VERSION` | `2.3.2` | Fika server release to install. |
 | `USE_MODSYNC` | `false` | Install ModSync so clients sync your modset. |
-| `MOD_URLS` | _(empty)_ | Whitespace-separated archive URLs (`.zip`/`.7z`) to install. |
 | `NUM_HEADLESS_PROFILES` | _(unset)_ | Number of headless profiles for the server to create. |
 
 ### How players connect
