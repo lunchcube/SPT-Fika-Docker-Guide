@@ -56,6 +56,12 @@ checks([
   [emitEnv().includes("USE_MODSYNC=true"), "ModSync now works on SPT 3.11 (Corter original)"],
   [emitCompose().includes("ghcr.io/dildz/spt-fika-server-3.11.x:"), "3.11 pulls the dedicated -3.11.x image"],
 ]);
+state.quma = true; state.qumaAdminPassword = "supersecret";
+checks([
+  [!emitCompose().includes("ghcr.io/dildz/quma"), "quma is 4.0-only — gated off on SPT 3.11"],
+  [!emitEnv().includes("QUMA_ADMIN_PASSWORD"), "no quma password in .env on 3.11"],
+]);
+state.quma = false;
 state.sptMajor = "4";
 checks([
   [emitCompose().includes("ghcr.io/dildz/spt-fika-server:") && !emitCompose().includes("spt-fika-server-3.11.x"), "4.0 pulls the base image"],

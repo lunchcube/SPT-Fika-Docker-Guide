@@ -44,7 +44,7 @@ const TABS = [
     { key: "modsyncVersion", label: "ModSync version", type: "text", def: "0.12.5",
       help: "Release tag — Dildz/ModSync-for-SPT4.0 (4.0) or c-orter/ModSync (3.11)." },
     { key: "quma", label: "Install Quartermaster", type: "toggle", def: false,
-      help: "Adds Quartermaster (quma) — an advanced server web UI for admins and players. Installs/updates/removes server mods from SPT Forge and talks to the Docker socket to restart the server. Reach it directly on the public IP or behind your reverse proxy. See the field guide for features." },
+      help: "Adds Quartermaster (quma) — an advanced server web UI for admins and players. Installs/updates/removes server mods from SPT Forge and talks to the Docker socket to restart the server. Reach it directly on the public IP or behind your reverse proxy. See the field guide for features. Available on SPT 4.0 only." },
     { key: "qumaPort", label: "Quartermaster port", type: "number", def: 9190, min: 1, max: 65535,
       help: "Host port for the quma dashboard over http. Put it behind your reverse proxy for HTTPS." },
     { key: "qumaAdminPassword", label: "Quartermaster admin password", type: "text", def: "",
@@ -99,6 +99,7 @@ function loadState() {
   const s = {};
   for (const k in FIELDS) s[k] = FIELDS[k].def;
   try { Object.assign(s, JSON.parse(localStorage.getItem(STORE_KEY) || "{}")); } catch {}
+  if (s.sptMajor === "3") s.quma = false;   // quma is 4.0-only — never carry a stale 3.11 selection
   return s;
 }
 function saveState() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch {} }
@@ -229,7 +230,7 @@ function emitCompose() {
     );
   }
 
-  if (s.quma) {
+  if (s.quma && s.sptMajor !== "3") {   // quma is 4.0-only
     // Quartermaster (quma) — mounts the data dir at /opt/server and the Docker socket.
     // It wraps the server by its known container name (QUMA_SERVER_CONTAINER), so the
     // data dir can be any path style (relative like ../server, or absolute). Starts as
@@ -303,7 +304,7 @@ function emitEnv() {
     L.push(`MODSYNC_VERSION=${s.modsyncVersion}`);
   }
   if (s.webapp) L.push(`WEBAPP_API_KEY=${s.webappApiKey}`);
-  if (s.quma) L.push(`QUMA_ADMIN_PASSWORD=${s.qumaAdminPassword}`);
+  if (s.quma && s.sptMajor !== "3") L.push(`QUMA_ADMIN_PASSWORD=${s.qumaAdminPassword}`);   // quma is 4.0-only
   return L.join("\n") + "\n";
 }
 
@@ -407,6 +408,7 @@ function renderFields() {
       || (f.key === "modsyncVersion" && !state.useModsync)
       || (f.key === "autoUpdateFika" && state.sptMajor === "3")   // 3.11 is frozen — no auto-update
       || ((f.key === "webappApiKey" || f.key === "webappPort") && !state.webapp)
+      || ((f.key === "quma" || f.key === "qumaPort" || f.key === "qumaAdminPassword") && state.sptMajor === "3")   // quma is 4.0-only
       || ((f.key === "qumaAdminPassword" || f.key === "qumaPort") && !state.quma);
 
     if (f.type === "toggle") {
@@ -509,7 +511,7 @@ function set(key, val, rerenderTab) {
     state.sptVersion     = val === "3" ? "3.11.4" : "4.0.13";
     state.fikaVersion    = val === "3" ? "2.4.8"  : "2.3.2";
     state.modsyncVersion = val === "3" ? "0.11.1" : "0.12.5";
-    if (val === "3") state.autoUpdateFika = false;   // 3.11 is frozen — no auto-update
+    if (val === "3") { state.autoUpdateFika = false; state.quma = false; }   // 3.11: frozen (no auto-update); quma is 4.0-only
   }
   saveState();
   if (rerenderTab) render();
