@@ -51,6 +51,8 @@ const TABS = [
       help: "Host port for the quma dashboard over http. Put it behind your reverse proxy for HTTPS." },
     { key: "qumaAdminPassword", label: "Quartermaster admin password", type: "text", def: "",
       help: "Admin login for the quma dashboard (min 8 chars). Written to .env as QUMA_ADMIN_PASSWORD and applied on first boot." },
+    { key: "qumaDiscordWebhook", label: "Quartermaster Discord webhook", type: "text", def: "",
+      help: "Optional. Quartermaster checks Forge and GitHub for mod updates every 30 minutes and posts new ones to this Discord webhook. Leave blank to disable the check." },
   ]},
   { id: "ops", label: "OPS", fields: [
     { key: "restartPolicy", label: "Restart policy", type: "select", def: "unless-stopped",
@@ -260,6 +262,16 @@ function emitCompose() {
       '      QUMA_SERVER_PORT: "6969"',
       '      QUMA_AUTO_START_SERVER: "false"',
       '      QUMA_ADMIN_PASSWORD: "${QUMA_ADMIN_PASSWORD}"',
+      // Who owns the core mods. Auto-update on = this image reinstalls them every
+      // boot, so quma must not touch them; off = the image installs once and quma
+      // adopts them (update/remove from its web UI).
+      `      QUMA_MANAGE_FIKA: "${!s.autoUpdateFika}"`,
+      `      FIKA_VERSION: "${s.fikaVersion}"`,
+      ...(s.useModsync ? [
+        `      QUMA_MANAGE_MODSYNC: "${!s.autoUpdateModsync}"`,
+        `      MODSYNC_VERSION: "${s.modsyncVersion}"`,
+      ] : []),
+      ...(s.qumaDiscordWebhook ? ['      QUMA_DISCORD_WEBHOOK_URL: "${QUMA_DISCORD_WEBHOOK_URL}"'] : []),
       "    ports:",
       `      - "${s.qumaPort}:9190"`,
       "    volumes:",
@@ -312,7 +324,10 @@ function emitEnv() {
     if (headlessOn() && s.sptMajor !== "3") L.push(`FIKA_HEADLESS_VERSION=${s.fikaHeadlessVersion}`);
   }
   if (s.webapp) L.push(`WEBAPP_API_KEY=${s.webappApiKey}`);
-  if (s.quma && s.sptMajor !== "3") L.push(`QUMA_ADMIN_PASSWORD=${s.qumaAdminPassword}`);   // quma is 4.0-only
+  if (s.quma && s.sptMajor !== "3") {   // quma is 4.0-only
+    L.push(`QUMA_ADMIN_PASSWORD=${s.qumaAdminPassword}`);
+    if (s.qumaDiscordWebhook) L.push(`QUMA_DISCORD_WEBHOOK_URL=${s.qumaDiscordWebhook}`);
+  }
   return L.join("\n") + "\n";
 }
 
@@ -418,8 +433,8 @@ function renderFields() {
       || (f.key === "autoUpdateFika" && state.sptMajor === "3")   // 3.11 is frozen — no auto-update
       || (f.key === "autoUpdateModsync" && (!state.useModsync || state.sptMajor === "3"))
       || ((f.key === "webappApiKey" || f.key === "webappPort") && !state.webapp)
-      || ((f.key === "quma" || f.key === "qumaPort" || f.key === "qumaAdminPassword") && state.sptMajor === "3")   // quma is 4.0-only
-      || ((f.key === "qumaAdminPassword" || f.key === "qumaPort") && !state.quma);
+      || ((f.key === "quma" || f.key === "qumaPort" || f.key === "qumaAdminPassword" || f.key === "qumaDiscordWebhook") && state.sptMajor === "3")   // quma is 4.0-only
+      || ((f.key === "qumaAdminPassword" || f.key === "qumaPort" || f.key === "qumaDiscordWebhook") && !state.quma);
 
     if (f.type === "toggle") {
       input = document.createElement("input");

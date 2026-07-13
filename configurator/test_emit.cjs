@@ -75,6 +75,33 @@ state.quma = true;
 checks([
   [/spt-fika-quma:[\\s\\S]*?condition: service_healthy/.test(emitCompose()), "quma waits for a healthy server before first-boot setup"],
 ]);
+
+// Core-mod ownership: auto-update ON = the image reinstalls every boot (quma must not
+// touch them); OFF = quma adopts them and can update/remove from its web UI.
+state.autoUpdateFika = true; state.autoUpdateModsync = true;
+checks([
+  [emitCompose().includes('QUMA_MANAGE_FIKA: "false"'), "auto-update Fika on = compose owns Fika"],
+  [emitCompose().includes('QUMA_MANAGE_MODSYNC: "false"'), "auto-update ModSync on = compose owns ModSync"],
+]);
+state.autoUpdateFika = false; state.autoUpdateModsync = false;
+checks([
+  [emitCompose().includes('QUMA_MANAGE_FIKA: "true"'), "auto-update Fika off = quma owns Fika"],
+  [emitCompose().includes('QUMA_MANAGE_MODSYNC: "true"'), "auto-update ModSync off = quma owns ModSync"],
+  [emitCompose().includes("FIKA_VERSION:"), "quma gets FIKA_VERSION to adopt against"],
+  [emitCompose().includes("MODSYNC_VERSION:"), "quma gets MODSYNC_VERSION to adopt against"],
+]);
+
+// Discord webhook is optional: no field, no env, no compose var.
+checks([
+  [!emitCompose().includes("QUMA_DISCORD_WEBHOOK_URL"), "no webhook var when the field is blank"],
+  [!emitEnv().includes("QUMA_DISCORD_WEBHOOK_URL"), "no webhook in .env when the field is blank"],
+]);
+state.qumaDiscordWebhook = "https://discord.com/api/webhooks/1/abc";
+checks([
+  [emitCompose().includes('QUMA_DISCORD_WEBHOOK_URL: "\${QUMA_DISCORD_WEBHOOK_URL}"'), "webhook wired from .env when set"],
+  [emitEnv().includes("QUMA_DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/1/abc"), "webhook value lands in .env"],
+]);
+state.qumaDiscordWebhook = "";
 state.quma = false;
 
 state.healthcheck = false;
