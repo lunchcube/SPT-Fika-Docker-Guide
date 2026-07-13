@@ -188,7 +188,7 @@ docker compose version          # verify (Compose plugin ships with it)</pre>
               <pre>unzip spt-fika-bundle-*.zip &amp;&amp; cd spt-fika-bundle-*
 docker compose up -d --wait     # --wait blocks until the server is healthy
 docker compose logs -f          # watch Fika / ModSync install + boot</pre>
-              <p><b>Use <code>--wait</code>.</b> The headless client and web app are gated on the server's healthcheck (<code>depends_on: service_healthy</code>), so they only start once the server is up. Without <code>--wait</code> they can be left not started.</p>
+              <p><b>Use <code>--wait</code>.</b> The headless client, web app and Quartermaster are gated on the server's healthcheck (<code>depends_on: service_healthy</code>), so they only start once the server is up. Without <code>--wait</code> they can be left not started.</p>
               <p>No manual folder setup needed — Docker creates your data directory on first run, and the container seeds the SPT files into it and sets ownership automatically.</p>
               <p>Day to day:</p>
               <pre>docker compose restart                                # restart

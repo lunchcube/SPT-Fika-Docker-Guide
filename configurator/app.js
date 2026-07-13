@@ -250,7 +250,7 @@ function emitCompose() {
       `    restart: ${s.restartPolicy}`,
       "    depends_on:",
       `      ${svc}:`,
-      "        condition: service_started",   // quma only needs the server container to exist, not be healthy
+      `        condition: ${s.healthcheck ? "service_healthy" : "service_started"}`,   // quma reads the server's game files at first boot, so it must wait until SPT has populated them
       "    environment:",
       `      PUID: "${s.puid}"`,
       `      PGID: "${s.pgid}"`,

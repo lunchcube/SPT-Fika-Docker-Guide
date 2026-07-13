@@ -71,6 +71,12 @@ checks([
   [emitCompose().includes("ghcr.io/dildz/spt-fika-server:") && !emitCompose().includes("spt-fika-server-3.11.x"), "4.0 pulls the base image"],
 ]);
 
+state.quma = true;
+checks([
+  [/spt-fika-quma:[\\s\\S]*?condition: service_healthy/.test(emitCompose()), "quma waits for a healthy server before first-boot setup"],
+]);
+state.quma = false;
+
 state.healthcheck = false;
 checks([
   [!emitCompose().includes("healthcheck:"), "no healthcheck when toggled off"],
