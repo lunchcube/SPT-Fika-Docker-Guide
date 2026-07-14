@@ -262,6 +262,9 @@ function emitCompose() {
       '      QUMA_SERVER_PORT: "6969"',
       '      QUMA_AUTO_START_SERVER: "false"',
       '      QUMA_ADMIN_PASSWORD: "${QUMA_ADMIN_PASSWORD}"',
+      // The headless is owned by this compose stack; quma only monitors it (status,
+      // logs) and can start/stop/restart it. Without the name it cannot find it.
+      ...(headlessOn() ? [`      QUMA_HEADLESS_CONTAINER: ${svc}-headless`] : []),
       // Who owns the core mods. Auto-update on = this image reinstalls them every
       // boot, so quma must not touch them; off = the image installs once and quma
       // adopts them (update/remove from its web UI).
