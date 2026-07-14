@@ -129,7 +129,10 @@ function validate() {
 }
 
 // ---- emitters ----
-function headlessOn() { return state.headlessEnabled && state.arch === "x86_64"; }
+// A headless client IS a Fika client — without Fika there is nothing for it to be.
+// Gating it here means the headless service, QUMA_HEADLESS_CONTAINER and the headless
+// plugin all switch off together when Fika is off.
+function headlessOn() { return state.headlessEnabled && state.installFika && state.arch === "x86_64"; }
 
 function emitCompose() {
   const s = state, svc = s.serverName || "spt-fika", net = `${svc}-net`;
@@ -267,12 +270,15 @@ function emitCompose() {
       ...(headlessOn() ? [`      QUMA_HEADLESS_CONTAINER: ${svc}-headless`] : []),
       // Who owns the core mods. Auto-update on = this image reinstalls them every
       // boot, so quma must not touch them; off = the image installs once and quma
-      // adopts them (update/remove from its web UI).
-      `      QUMA_MANAGE_FIKA: "${!s.autoUpdateFika}"`,
-      `      FIKA_VERSION: "${s.fikaVersion}"`,
+      // adopts them (update/remove from its web UI). No Fika = nothing to own.
+      ...(s.installFika ? [
+        `      QUMA_MANAGE_FIKA: "${!s.autoUpdateFika}"`,
+        `      FIKA_VERSION: "${s.fikaVersion}"`,
+      ] : []),
       // Fika's headless plugin is a separate GitHub-only component on its own version
-      // line — quma adopts it as its own mod, so it needs the version too.
-      ...(s.useModsync && headlessOn() ? [`      FIKA_HEADLESS_VERSION: "${s.fikaHeadlessVersion}"`] : []),
+      // line — quma adopts it as its own mod, so it needs the version too. Only ever
+      // installed when a headless is actually in play (headlessOn() implies Fika).
+      ...(s.installFika && s.useModsync && headlessOn() ? [`      FIKA_HEADLESS_VERSION: "${s.fikaHeadlessVersion}"`] : []),
       ...(s.useModsync ? [
         `      QUMA_MANAGE_MODSYNC: "${!s.autoUpdateModsync}"`,
         `      MODSYNC_VERSION: "${s.modsyncVersion}"`,
