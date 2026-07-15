@@ -109,7 +109,7 @@ function loadState() {
   const s = {};
   for (const k in FIELDS) s[k] = FIELDS[k].def;
   try { Object.assign(s, JSON.parse(localStorage.getItem(STORE_KEY) || "{}")); } catch {}
-  if (s.sptMajor === "3") s.quma = false;   // quma is 4.0-only — never carry a stale 3.11 selection
+  if (s.sptMajor === "3") { s.quma = false; s.webapp = false; }   // quma + Fika Web App are 4.0-only — never carry a stale 3.11 selection
   return s;
 }
 function saveState() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch {} }
@@ -137,6 +137,8 @@ function validate() {
 // Gating it here means the headless service, QUMA_HEADLESS_CONTAINER and the headless
 // plugin all switch off together when Fika is off.
 function headlessOn() { return state.headlessEnabled && state.installFika && state.arch === "x86_64"; }
+// Fika Web App is 4.0-only — gate the service, .env keys and ARM Dockerfile together.
+function webappOn() { return state.webapp && state.sptMajor !== "3"; }
 
 function emitCompose() {
   const s = state, svc = s.serverName || "spt-fika", net = `${svc}-net`;
@@ -210,7 +212,7 @@ function emitCompose() {
       `      - ${net}`,
     );
   }
-  if (s.webapp) {
+  if (webappOn()) {
     // lacyway/fikawebapp is amd64-only. On ARM we don't re-host it — we rebuild it
     // locally from lacyway's OWN published image onto an arm64 .NET runtime (see
     // webapp/Dockerfile, shipped in the bundle). x86 pulls his image untouched.
@@ -302,7 +304,7 @@ function emitCompose() {
   L.push("", "networks:", `  ${net}:`, `    name: ${net}`, "    driver: bridge");
 
   // Named volume for the web app data (avoids the bind-mount perms trap).
-  if (s.webapp) L.push("", "volumes:", "  webappdata:");
+  if (webappOn()) L.push("", "volumes:", "  webappdata:");
 
   return L.join("\n") + "\n";
 }
@@ -339,7 +341,7 @@ function emitEnv() {
     // play; the client/headless staging is a 4.0 feature (3.11's installer is frozen).
     if (headlessOn() && s.sptMajor !== "3") L.push(`FIKA_HEADLESS_VERSION=${s.fikaHeadlessVersion}`);
   }
-  if (s.webapp) L.push(`WEBAPP_API_KEY=${s.webappApiKey}`);
+  if (webappOn()) L.push(`WEBAPP_API_KEY=${s.webappApiKey}`);
   if (s.quma && s.sptMajor !== "3") {   // quma is 4.0-only
     L.push(`QUMA_ADMIN_PASSWORD=${s.qumaAdminPassword}`);
     if (s.qumaDiscordWebhook) L.push(`QUMA_DISCORD_WEBHOOK_URL=${s.qumaDiscordWebhook}`);
@@ -351,7 +353,7 @@ function emitEnv() {
 // to the compose file, so the folder layout is part of the contract — spell it out.
 // Default (../server) = the "files/ subfolder" convention; ./ = flat; absolute = wherever.
 function layoutSteps(s) {
-  const arm = s.webapp && s.arch === "aarch64";
+  const arm = webappOn() && s.arch === "aarch64";
   const keep = arm ? " Keep the `webapp/` subfolder (it patches the ARM-only Fika Web App image at first build — nothing is downloaded from a third party)." : "";
   const rel = s.dataDir.startsWith("../");
   if (!rel) {
@@ -426,7 +428,7 @@ function bundleFiles() {
     { name: ".env", content: emitEnv() },
     { name: "README.md", content: emitReadme() },
   ];
-  if (state.webapp && state.arch === "aarch64") {
+  if (webappOn() && state.arch === "aarch64") {
     files.push({ name: "webapp/Dockerfile", content: emitWebappDockerfile() });
   }
   return files;
@@ -473,6 +475,7 @@ function renderFields() {
       || (f.key === "autoUpdateFika" && state.sptMajor === "3")   // 3.11 is frozen — no auto-update
       || (f.key === "autoUpdateModsync" && (!state.useModsync || state.sptMajor === "3"))
       || ((f.key === "webappApiKey" || f.key === "webappPort") && !state.webapp)
+      || ((f.key === "webapp" || f.key === "webappApiKey" || f.key === "webappPort") && state.sptMajor === "3")   // Fika Web App is 4.0-only
       || ((f.key === "quma" || f.key === "qumaPort" || f.key === "qumaAdminPassword" || f.key === "qumaDiscordWebhook") && state.sptMajor === "3")   // quma is 4.0-only
       || ((f.key === "qumaAdminPassword" || f.key === "qumaPort" || f.key === "qumaDiscordWebhook") && !state.quma);
 
@@ -539,7 +542,7 @@ function renderFields() {
 }
 
 function renderPreview() {
-  const armWebapp = state.webapp && state.arch === "aarch64";
+  const armWebapp = webappOn() && state.arch === "aarch64";
   // The Dockerfile tab only ships on ARM + webapp — if that combo just went away
   // while it was selected, fall back to compose so we don't render a stale file.
   if (previewMode === "dockerfile" && !armWebapp) previewMode = "compose";
@@ -586,7 +589,7 @@ function set(key, val, rerenderTab) {
     state.fikaVersion    = val === "3" ? "2.4.8"  : "2.3.2";
     state.modsyncVersion = val === "3" ? "0.11.1" : "0.12.5";
     if (!state.__pinnedName) state.serverName = val === "3" ? "spt-fika-3.11.4" : "spt-fika-4.0.x";
-    if (val === "3") { state.autoUpdateFika = false; state.quma = false; }   // 3.11: frozen (no auto-update); quma is 4.0-only
+    if (val === "3") { state.autoUpdateFika = false; state.quma = false; state.webapp = false; }   // 3.11: frozen (no auto-update); quma + Fika Web App are 4.0-only
   }
   saveState();
   if (rerenderTab) render();

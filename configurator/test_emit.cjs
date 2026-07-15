@@ -59,6 +59,12 @@ checks([
 ]);
 
 state.sptMajor = "3";
+state.webapp = true;   // Fika Web App is 4.0-only — must be suppressed on 3.11 regardless of the toggle
+checks([
+  [!emitCompose().includes("fikawebapp"), "Fika Web App gated off on SPT 3.11"],
+  [!emitEnv().includes("WEBAPP_API_KEY"), "no WEBAPP_API_KEY in .env on 3.11"],
+]);
+state.webapp = false;
 checks([
   [emitEnv().includes("USE_MODSYNC=true"), "ModSync now works on SPT 3.11 (Corter original)"],
   [emitCompose().includes("ghcr.io/dildz/spt-fika-server-3.11.x:"), "3.11 pulls the dedicated -3.11.x image"],
