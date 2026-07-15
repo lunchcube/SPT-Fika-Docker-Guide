@@ -28,15 +28,25 @@ checks([
   [dEnv.includes("FIKA_VERSION=2.3.2"), "default FIKA_VERSION"],
   [dCompose.includes('"6969:6969"'), "default port mapping"],
   [!dCompose.includes("headless"), "no headless by default"],
-  [dCompose.includes("name: spt-fika-4.0.x"), "default server name per major (4.0.x)"],
+  [dCompose.includes("name: spt-fika-4.0.x"), "project name = stack base (4.0.x)"],
+  [dCompose.includes("container_name: spt-fika-4.0.x-server"), "default server name = base-server"],
   [dCompose.includes("- ../server:/opt/server"), "default data dir mount"],
   [dCompose.includes("/fika/presence/get"), "fika healthcheck emitted"],
   [/\\nnetworks:\\n  spt-fika-4.0.x-net:/.test(dCompose), "network declared"],
   [dCompose.includes("- spt-fika-4.0.x-net"), "server joins the network"],
 ]);
 
-// Pin the server name for the remaining service-naming assertions (independent of the per-major default).
-state.serverName = "spt-fika";
+// Default stack names: shared base spt-fika-4.0.x with per-service suffixes.
+state.arch = "x86_64"; state.headlessEnabled = true; state.webapp = true;
+checks([
+  [emitCompose().includes("  spt-fika-4.0.x-headless:"), "default headless name = base-headless"],
+  [emitCompose().includes("  spt-fika-4.0.x-webapp:"), "default webapp name = base-webapp"],
+]);
+state.headlessEnabled = false; state.webapp = false;
+
+// Pin the base for the remaining service-naming assertions (independent of the per-major default).
+// Blank the derived names so they re-derive from the pinned base.
+state.serverName = "spt-fika"; state.headlessName = ""; state.webappName = "";
 
 state.arch = "x86_64"; state.headlessEnabled = true; state.headlessTag = "latest";
 checks([
