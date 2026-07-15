@@ -187,7 +187,7 @@ section { scroll-margin-top: 72px; }
 .workspace { display: grid; grid-template-columns: 460px minmax(0, 1fr); gap: 18px; align-items: start; }
 .panel { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
 
-.tabbar { display: flex; flex-wrap: nowrap; gap: 2px; padding: 8px 8px 0; border-bottom: 1px solid var(--line); }
+.tabbar { display: flex; flex-wrap: nowrap; justify-content: space-between; gap: 2px; padding: 8px 8px 0; border-bottom: 1px solid var(--line); }
 .tab {
   background: transparent; border: none; border-bottom: 2px solid transparent;
   color: var(--muted); cursor: pointer; padding: 10px 10px; white-space: nowrap;
