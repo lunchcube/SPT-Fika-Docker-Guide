@@ -22,11 +22,11 @@ const TABS = [
       options: [["4", "4.0 (current)"], ["3", "3.11 (LTS — build unverified)"]],
       help: "Picks the server build/run path." },
     { key: "sptVersion", label: "SPT version", type: "text", def: "4.0.13",
-      help: "Auto-filled to the latest stable 4.0.x from the Forge on load; edit to pin a version. (A valid sp-tarkov/server-csharp tag.)", req: true },
+      help: (s) => `Auto-filled to the latest stable ${s.sptMajor === "3" ? "3.11.x" : "4.0.x"} from the Forge on load; edit to pin a version. ${s.sptMajor === "3" ? "(A valid SPT 3.11.x release.)" : "(A valid sp-tarkov/server-csharp tag.)"}`, req: true },
     { key: "installFika", label: "Install Fika", type: "toggle", def: true,
       help: "Install the Fika server mod on first boot." },
     { key: "fikaVersion", label: "Fika version", type: "text", def: "2.3.2",
-      help: "Auto-filled to the latest Fika server release on load; edit to pin a version. (Tag of project-fika/Fika-Server-CSharp.)", req: true },
+      help: (s) => `Auto-filled to the latest Fika server release on load; edit to pin a version. (Tag of project-fika/${s.sptMajor === "3" ? "Fika-Server" : "Fika-Server-CSharp"}.)`, req: true },
   ]},
   { id: "headless", label: "HEADLESS", arch: "x86_64", fields: [
     { key: "headlessEnabled", label: "Enable headless client", type: "toggle", def: false,
@@ -91,7 +91,9 @@ const TABS = [
 const FIELDS = {};
 for (const t of TABS) for (const f of t.fields) FIELDS[f.key] = f;
 
-const STORE_KEY = "spt-fika-configurator";
+// Versioned so a poisoned pre-fix state (browser autofill wrote 1000 into text
+// fields) is abandoned once — bump on any change that must not inherit old state.
+const STORE_KEY = "spt-fika-configurator-v1";
 let state = loadState();
 let activeTab = "general";
 let previewMode = "compose"; // "compose" | "env" | "dockerfile"
@@ -523,7 +525,7 @@ function renderFields() {
 
     const help = document.createElement("div");
     help.className = "help";
-    help.textContent = f.help;
+    help.textContent = typeof f.help === "function" ? f.help(state) : f.help;
     wrap.appendChild(help);
 
     if (errs[f.key]) {
