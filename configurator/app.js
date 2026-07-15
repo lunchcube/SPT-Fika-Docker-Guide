@@ -6,7 +6,7 @@
 const TABS = [
   { id: "version", label: "VERSION", fields: [
     { key: "sptMajor", label: "SPT major", type: "select", def: "4",
-      options: [["4", "4.0 (current)"], ["3", "3.11 (LTS — build unverified)"]],
+      options: [["4", "4.0 (current)"], ["3", "3.11 (LTS)"]],
       help: "Picks the server build/run path." },
     { key: "sptVersion", label: "SPT version", type: "text", def: "4.0.13",
       help: (s) => `Auto-filled to the latest stable ${s.sptMajor === "3" ? "3.11.x" : "4.0.x"} from the Forge on load; edit to pin a version. ${s.sptMajor === "3" ? "(A valid SPT 3.11.x release.)" : "(A valid sp-tarkov/server-csharp tag.)"}`, req: true },
