@@ -28,15 +28,20 @@ checks([
   [dEnv.includes("FIKA_VERSION=2.3.2"), "default FIKA_VERSION"],
   [dCompose.includes('"6969:6969"'), "default port mapping"],
   [!dCompose.includes("headless"), "no headless by default"],
-  [dCompose.includes("name: spt-fika"), "project name emitted"],
+  [dCompose.includes("name: spt-fika-4.0.x"), "default server name per major (4.0.x)"],
+  [dCompose.includes("- ../server:/opt/server"), "default data dir mount"],
   [dCompose.includes("/fika/presence/get"), "fika healthcheck emitted"],
-  [/\\nnetworks:\\n  spt-fika-net:/.test(dCompose), "network declared"],
-  [dCompose.includes("- spt-fika-net"), "server joins the network"],
+  [/\\nnetworks:\\n  spt-fika-4.0.x-net:/.test(dCompose), "network declared"],
+  [dCompose.includes("- spt-fika-4.0.x-net"), "server joins the network"],
 ]);
+
+// Pin the server name for the remaining service-naming assertions (independent of the per-major default).
+state.serverName = "spt-fika";
 
 state.arch = "x86_64"; state.headlessEnabled = true; state.headlessTag = "latest";
 checks([
   [emitCompose().includes("spt-fika-headless"), "headless service on x86"],
+  [emitCompose().includes("- ../headless:/opt/tarkov"), "headless dir mount default"],
   [emitCompose().includes("25565:25565/udp"), "headless P2P udp port"],
   [emitCompose().includes("SERVER_URL: spt-fika"), "headless SERVER_URL = server service"],
   [emitCompose().includes('condition: service_healthy'), "headless waits for healthy server"],
@@ -151,7 +156,7 @@ checks([
   [emitCompose().includes("QUMA_SERVER_CONTAINER: spt-fika"), "quma points at the server container"],
   [emitEnv().includes("QUMA_ADMIN_PASSWORD=supersecret"), "QUMA_ADMIN_PASSWORD emitted to .env"],
   [emitCompose().includes("QUMA_SPT_DIR: /opt/server"), "quma reads the data dir at /opt/server"],
-  [emitCompose().includes("- ./server-data:/opt/server"), "quma mounts the data dir (any path style) at /opt/server"],
+  [emitCompose().includes("- ../server:/opt/server"), "quma mounts the data dir (any path style) at /opt/server"],
   [!validate().qumaAdminPassword, "quma password valid at 8+ chars"],
 ]);
 state.qumaAdminPassword = "short";
