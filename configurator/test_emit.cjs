@@ -49,6 +49,15 @@ checks([
   [emitEnv().includes("HEADLESS_PROFILE_ID="), "HEADLESS_PROFILE_ID emitted"],
 ]);
 
+// Headless name: blank derives <server>-headless (above); a value overrides it.
+state.headlessName = "my-headless";
+checks([
+  [emitCompose().includes("  my-headless:"), "custom headless name is the service id"],
+  [emitCompose().includes("container_name: my-headless"), "custom headless container_name"],
+  [!emitCompose().includes("spt-fika-headless"), "server-derived headless name replaced"],
+]);
+state.headlessName = "";
+
 checks([[!emitEnv().includes("USE_MODSYNC"), "no ModSync vars when off"]]);
 state.useModsync = true; state.modsyncVersion = "0.12.5";
 checks([
