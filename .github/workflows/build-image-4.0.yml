@@ -22,7 +22,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE: dildz/spt-fika-server   # GHCR needs lowercase; the configurator's compose pulls this exact name
+  IMAGE: lunchcube/spt-fika-server   # GHCR needs lowercase; the configurator's compose pulls this exact name
 
 jobs:
   # Build each arch on its own native runner, push by digest (no tag yet).
