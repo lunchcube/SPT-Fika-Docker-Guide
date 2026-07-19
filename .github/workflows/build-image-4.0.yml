@@ -57,7 +57,7 @@ jobs:
         id: build
         uses: docker/build-push-action@v6
         with:
-          context: ./image
+          context: ./files
           platforms: ${{ matrix.platform }}
           build-args: |
             SPT_MAJOR=4
